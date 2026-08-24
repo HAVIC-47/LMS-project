@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "lesson_progresses",
+  "info": {
+    "singularName": "lesson-progress",
+    "pluralName": "lesson-progresses",
+    "displayName": "Lesson Progress",
+    "description": "One row per (student, lesson) marked complete. `course` is denormalized so a course percentage is a single count query."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "student": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "lesson": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::lesson.lesson",
+      "inversedBy": "progressRecords"
+    },
+    "course": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::course.course"
+    },
+    "completed": {
+      "type": "boolean",
+      "required": true,
+      "default": true
+    },
+    "completedAt": {
+      "type": "datetime"
+    }
+  }
+}
