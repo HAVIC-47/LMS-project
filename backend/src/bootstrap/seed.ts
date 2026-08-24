@@ -78,7 +78,7 @@ const COURSES: CourseSeed[] = [
     slug: 'modern-javascript-foundations',
     level: 'beginner',
     description:
-      'Scope, closures, the event loop and the async model — the parts of JavaScript that explain why the rest of it behaves the way it does.',
+      'Scope, closures, the event loop and the async model. The parts of JavaScript that explain why the rest of it behaves the way it does.',
     coverImageUrl: 'https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?w=1200&q=80',
     isPublished: true,
     ownerEmail: 'instructor@lms.test',
@@ -101,7 +101,7 @@ const COURSES: CourseSeed[] = [
       {
         title: 'Promises and async/await',
         contentType: 'text',
-        body: 'A promise is a value that is not there yet. `await` does not make code synchronous — it suspends the surrounding function and lets the loop carry on.',
+        body: 'A promise is a value that is not there yet. `await` does not make code synchronous. It suspends the surrounding function and lets the loop carry on.',
       },
       {
         title: 'Modules and bundling',
@@ -125,7 +125,7 @@ const COURSES: CourseSeed[] = [
             'A copy of the values at creation time',
             'The scope it was created in',
             'Only the global object',
-            'Nothing — it is just a function',
+            'Nothing, it is just a function',
           ],
           correctIndex: 1,
         },
@@ -162,7 +162,7 @@ const COURSES: CourseSeed[] = [
     slug: 'designing-for-the-web',
     level: 'intermediate',
     description:
-      'Type, spacing, colour and hierarchy — how to make an interface feel considered rather than assembled.',
+      'Type, spacing, colour and hierarchy. How to make an interface feel considered rather than assembled.',
     coverImageUrl: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=1200&q=80',
     isPublished: true,
     ownerEmail: 'cm@lms.test',
@@ -429,7 +429,7 @@ export const seedDemoData = async (strapi: Core.Strapi) => {
     data: {
       title: 'Course roadmap for next quarter (draft)',
       slug: 'course-roadmap-next-quarter',
-      excerpt: 'Internal planning notes — not for publication yet.',
+      excerpt: 'Internal planning notes, not for publication yet.',
       body: 'Draft outline of the courses we intend to record next quarter. Do not publish until the schedule is confirmed.',
       author: contentManager?.id,
     },

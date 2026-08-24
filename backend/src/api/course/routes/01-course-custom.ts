@@ -24,6 +24,12 @@ export default {
     },
     {
       method: 'GET',
+      path: '/courses/slug/:slug',
+      handler: 'course.bySlug',
+      config: { policies: [] },
+    },
+    {
+      method: 'GET',
       path: '/courses/:id/my-progress',
       handler: 'course.myProgress',
       config: {

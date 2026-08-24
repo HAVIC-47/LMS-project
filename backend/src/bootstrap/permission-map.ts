@@ -29,12 +29,14 @@ const PLATFORM = 'api::platform.platform';
 
 const CRUD = ['find', 'findOne', 'create', 'update', 'delete'];
 const READ = ['find', 'findOne'];
+/** Courses are also addressable by slug, which is a read like any other. */
+const COURSE_READ = [...READ, 'bySlug'];
 
 const actions = (uid: string, names: string[]) => names.map((name) => `${uid}.${name}`);
 
 /** Everything an admin can reach — the union of every other role plus the admin panel. */
 const ADMIN_ACTIONS = [
-  ...actions(COURSE, [...CRUD, 'mine', 'myProgress', 'studentsProgress']),
+  ...actions(COURSE, [...CRUD, 'bySlug', 'mine', 'myProgress', 'studentsProgress']),
   ...actions(LESSON, CRUD),
   ...actions(QUIZ, [...CRUD, 'take']),
   ...actions(QUESTION, CRUD),
@@ -51,7 +53,7 @@ const ADMIN_ACTIONS = [
  * roles ❌" row, enforced rather than merely hidden.
  */
 const CONTENT_MANAGER_ACTIONS = [
-  ...actions(COURSE, [...CRUD, 'mine', 'studentsProgress']),
+  ...actions(COURSE, [...CRUD, 'bySlug', 'mine', 'studentsProgress']),
   ...actions(LESSON, CRUD),
   ...actions(QUIZ, [...CRUD, 'take']),
   ...actions(QUESTION, CRUD),
@@ -65,7 +67,7 @@ const CONTENT_MANAGER_ACTIONS = [
  * posts ❌" — so no create/update/delete for BLOG here.
  */
 const INSTRUCTOR_ACTIONS = [
-  ...actions(COURSE, [...CRUD, 'mine', 'studentsProgress']),
+  ...actions(COURSE, [...CRUD, 'bySlug', 'mine', 'studentsProgress']),
   ...actions(LESSON, CRUD),
   ...actions(QUIZ, [...CRUD, 'take']),
   ...actions(QUESTION, CRUD),
@@ -79,7 +81,7 @@ const INSTRUCTOR_ACTIONS = [
  * progress writes go through the scoped custom routes that take the user from the JWT.
  */
 const STUDENT_ACTIONS = [
-  ...actions(COURSE, [...READ, 'myProgress']),
+  ...actions(COURSE, [...COURSE_READ, 'myProgress']),
   ...actions(LESSON, READ),
   ...actions(QUIZ, ['take', 'submit']),
   ...actions(ENROLLMENT, ['enroll', 'me', 'unenroll']),
@@ -93,7 +95,7 @@ const STUDENT_ACTIONS = [
  * the blog controller pins anonymous callers to `status=published`, so drafts stay
  * invisible even to a hand-crafted query string.
  */
-const PUBLIC_ACTIONS = [...actions(COURSE, READ), ...actions(BLOG, READ)];
+const PUBLIC_ACTIONS = [...actions(COURSE, COURSE_READ), ...actions(BLOG, READ)];
 
 export const PERMISSION_MAP: Record<RoleType | 'public', string[]> = {
   [ROLES.ADMIN]: ADMIN_ACTIONS,

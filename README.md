@@ -9,9 +9,9 @@ tracking, auto-graded MCQ quizzes, a blog with draft/publish, and an admin panel
 | Backend / CMS | Strapi 5 | Railway |
 
 ```
-LMS/
-  backend/     Strapi 5 (TypeScript) — API, data model, role-based access control
-  frontend/    Next.js — coming in Part 2
+LMS-project/
+  backend/     Strapi 5 (TypeScript) - API, data model, role-based access control
+  frontend/    Next.js 16 (App Router) - public site, auth, role-aware dashboard
 ```
 
 ---
@@ -67,6 +67,49 @@ matter (quiz answers, blog drafts). Everything should read `PASS`.
 
 ---
 
+## Running the frontend locally
+
+The backend must be running first: the Next server calls it during render.
+
+```bash
+cd frontend
+npm install
+cp .env.example .env.local     # STRAPI_URL defaults to http://127.0.0.1:1337
+npm run dev                    # http://localhost:3000
+```
+
+`npm run build` for a production build, `npm run lint` for the linter.
+
+### How authentication works
+
+The browser never holds the Strapi JWT.
+
+1. The login form posts to `/api/auth/login`, a route handler on the Next server.
+2. That handler exchanges the credentials with Strapi and writes the JWT into an
+   **httpOnly, SameSite=Lax cookie**. The response body contains the user, never the token.
+3. Server Components read the cookie and call Strapi with it. `src/lib/strapi.ts` is marked
+   `server-only`, so importing it from a Client Component fails the build.
+
+The token is therefore unreadable by any script on the page, which is verified by a test
+asserting `document.cookie` does not contain it.
+
+### Route protection
+
+Three layers, deliberately:
+
+| Layer | File | What it decides |
+|---|---|---|
+| Edge | `src/proxy.ts` | Is there a session cookie at all? Anonymous visitors are redirected to `/login?next=...` |
+| Page | `src/lib/guards.ts` | Does this user's role allow this page? Wrong role goes to `/forbidden` |
+| API | Strapi policies and controllers | The real boundary. Re-checked on every request |
+
+`proxy.ts` is Next 16's replacement for `middleware.ts` (same feature, renamed). It
+deliberately does not check roles: a Strapi JWT carries no role claim, so doing so would
+mean a backend round trip on every navigation. Deleting both frontend layers would change
+nothing about what data a user can actually reach.
+
+---
+
 ## Roles and permissions
 
 | Action | Admin | Content Manager | Instructor | Student |
@@ -100,9 +143,19 @@ why.
 - [x] Blog with draft vs published, drafts invisible to the public
 - [x] Seed data and a smoke test
 
-**Part 2 — Next.js foundation** — design system, cookie session auth, public pages
-**Part 3 — student experience** — My Courses, lesson viewer, progress UI, quiz runner
-**Part 4 — staff dashboards + deployment** — CRUD UIs, admin panel, blog editor, Vercel + Railway
+**Part 2 - Next.js foundation** ✅
+
+- [x] Design system: Geist type, one accent, locked radii, light and dark themes
+- [x] httpOnly cookie session over Strapi JWT; signup, login, logout, current user
+- [x] Route protection at the edge, role guards on pages, `/forbidden` for wrong role
+- [x] Landing page, course catalog with level filter, course detail with locked syllabus
+- [x] Blog index and post pages; drafts never reach the public API
+- [x] Role-aware `/dashboard`: student progress, staff course list, admin platform stats
+- [x] Working enrollment from the course page
+- [x] Loading skeletons, empty states, error boundary, 404, no-JS fallback for reveals
+- [x] 30-check browser suite covering all four roles, dark mode and 375px layout
+**Part 3 - student experience** - lesson viewer, mark-complete UI, quiz runner, results
+**Part 4 - staff dashboards + deployment** - CRUD UIs, blog editor, admin panel, Vercel + Railway
 
 ---
 
@@ -115,4 +168,10 @@ why.
 | `DATABASE_CLIENT`, `DATABASE_FILENAME` | Local SQLite |
 | `DATABASE_URL` | Set by Railway; its presence switches the app to Postgres |
 | `FRONTEND_URL` | Comma-separated origins allowed through CORS |
-| `SEED_DEMO_DATA`, `SEED_PASSWORD` | Demo seed on boot — leave off in production |
+| `SEED_DEMO_DATA`, `SEED_PASSWORD` | Demo seed on boot - leave off in production |
+
+## Environment variables (frontend)
+
+| Variable | Purpose |
+|---|---|
+| `STRAPI_URL` | Origin of the Strapi API. Server-side only; it is never sent to the browser |

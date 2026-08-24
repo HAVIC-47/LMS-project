@@ -57,6 +57,98 @@ const attachInstructors = async (
   };
 };
 
+/**
+ * Attaches a syllabus and counts.
+ *
+ * Same problem as `attachInstructors`, same fix. `?populate=lessons` returns nothing to a
+ * visitor because no application role holds `api::lesson.lesson.find`, and the content API
+ * drops relations whose target the caller cannot read. Opening that permission would make
+ * `GET /api/lessons` public and hand out every lesson body with it.
+ *
+ * So the syllabus is assembled server-side and projected down to the fields a table of
+ * contents needs. `body` and `videoUrl` are never selected, so the content cannot leak
+ * through this path even by accident: it is not in the query.
+ */
+const attachSyllabus = async (
+  strapi: Core.Strapi,
+  response: { data?: unknown },
+  { includeLessons }: { includeLessons: boolean }
+): Promise<{ data?: unknown }> => {
+  if (!response || typeof response !== 'object' || !response.data) return response;
+
+  const isList = Array.isArray(response.data);
+  const entries = (isList ? response.data : [response.data]) as { documentId?: string }[];
+  const documentIds = entries.map((entry) => entry?.documentId).filter(Boolean) as string[];
+
+  if (documentIds.length === 0) return response;
+
+  const courses = await strapi.db.query('api::course.course').findMany({
+    where: { documentId: { $in: documentIds } },
+    select: ['id', 'documentId'],
+  });
+
+  const courseIds = courses.map((course: { id: number }) => course.id);
+
+  const [lessons, quizzes] = await Promise.all([
+    strapi.db.query('api::lesson.lesson').findMany({
+      where: { course: { id: { $in: courseIds } } },
+      // Note the absence of `body` and `videoUrl`.
+      select: ['id', 'documentId', 'title', 'order', 'contentType'],
+      populate: { course: { select: ['documentId'] } },
+      orderBy: { order: 'asc' },
+    }),
+    strapi.db.query('api::quiz.quiz').findMany({
+      where: { course: { id: { $in: courseIds } } },
+      select: ['id', 'documentId', 'title', 'description', 'passingScore'],
+      populate: { course: { select: ['documentId'] }, questions: { select: ['id'] } },
+    }),
+  ]);
+
+  const lessonsByCourse = new Map<string, unknown[]>();
+  const quizzesByCourse = new Map<string, unknown[]>();
+
+  for (const lesson of lessons as ({ course?: { documentId?: string } } & Record<string, unknown>)[]) {
+    const key = lesson.course?.documentId;
+    if (!key) continue;
+    const { course, ...rest } = lesson;
+    void course;
+    if (!lessonsByCourse.has(key)) lessonsByCourse.set(key, []);
+    lessonsByCourse.get(key)!.push(rest);
+  }
+
+  for (const quiz of quizzes as ({ course?: { documentId?: string }; questions?: unknown[] } & Record<string, unknown>)[]) {
+    const key = quiz.course?.documentId;
+    if (!key) continue;
+    const { course, questions, ...rest } = quiz;
+    void course;
+    if (!quizzesByCourse.has(key)) quizzesByCourse.set(key, []);
+    quizzesByCourse.get(key)!.push({
+      ...rest,
+      questionCount: Array.isArray(questions) ? questions.length : 0,
+    });
+  }
+
+  const decorate = (entry: { documentId?: string }) => {
+    if (!entry?.documentId) return entry;
+
+    const courseLessons = lessonsByCourse.get(entry.documentId) ?? [];
+    const courseQuizzes = quizzesByCourse.get(entry.documentId) ?? [];
+
+    return {
+      ...entry,
+      // The catalog only needs counts; the detail page needs the list itself.
+      lessonCount: courseLessons.length,
+      quizCount: courseQuizzes.length,
+      ...(includeLessons ? { lessons: courseLessons, quizzes: courseQuizzes } : {}),
+    };
+  };
+
+  return {
+    ...response,
+    data: isList ? entries.map(decorate) : decorate(entries[0]),
+  };
+};
+
 export default factories.createCoreController('api::course.course', ({ strapi }) => ({
   /**
    * Catalog listing.
@@ -78,7 +170,9 @@ export default factories.createCoreController('api::course.course', ({ strapi })
 
     const response = await super.find(ctx);
 
-    return attachInstructors(strapi, sanitizeCourseResponse(response));
+    return attachSyllabus(strapi, await attachInstructors(strapi, sanitizeCourseResponse(response)), {
+      includeLessons: false,
+    });
   },
 
   async findOne(ctx) {
@@ -97,7 +191,9 @@ export default factories.createCoreController('api::course.course', ({ strapi })
 
     const response = await super.findOne(ctx);
 
-    return attachInstructors(strapi, sanitizeCourseResponse(response));
+    return attachSyllabus(strapi, await attachInstructors(strapi, sanitizeCourseResponse(response)), {
+      includeLessons: true,
+    });
   },
 
   /**
@@ -163,6 +259,33 @@ export default factories.createCoreController('api::course.course', ({ strapi })
     }
 
     return attachInstructors(strapi, sanitizeCourseResponse(response));
+  },
+
+  /**
+   * GET /api/courses/slug/:slug
+   *
+   * The course detail page addresses courses by slug, not documentId. Without this the
+   * page would have to run a filtered list query to translate the slug, then a second
+   * request for the record itself, on every visit.
+   *
+   * It reuses `findOne` rather than duplicating its logic, so the unpublished-course check
+   * and the sanitising both still apply.
+   */
+  async bySlug(ctx, next) {
+    const course = await strapi.db.query('api::course.course').findOne({
+      where: { slug: ctx.params.slug },
+      select: ['documentId'],
+    });
+
+    if (!course) {
+      return ctx.notFound('Course not found');
+    }
+
+    ctx.params = { ...ctx.params, id: course.documentId };
+
+    // Strapi types every controller action as optional, hence the assertion. `next` is
+    // forwarded so the action keeps the same signature the router expects.
+    return this.findOne!(ctx, next);
   },
 
   /**
