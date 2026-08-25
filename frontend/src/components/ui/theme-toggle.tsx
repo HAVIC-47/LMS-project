@@ -57,7 +57,7 @@ export function ThemeToggle() {
       onClick={toggle}
       // The label describes what pressing it will do, not the current state.
       aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-      className="flex size-11 cursor-pointer items-center justify-center rounded-pill text-text-muted transition-colors duration-200 hover:bg-shell hover:text-text"
+      className="flex size-11 cursor-pointer items-center justify-center rounded-control text-text-muted transition-colors duration-200 hover:bg-shell hover:text-text"
     >
       {theme === 'light' ? (
         <MoonIcon size={18} weight="regular" aria-hidden />

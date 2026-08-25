@@ -31,7 +31,7 @@ function FormSkeleton() {
       <Skeleton className="h-[72px]" />
       <Skeleton className="h-[72px]" />
       <Skeleton className="h-[72px]" />
-      <Skeleton className="h-14 rounded-pill" />
+      <Skeleton className="h-14 rounded-control" />
     </div>
   );
 }

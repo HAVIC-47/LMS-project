@@ -1,94 +1,152 @@
 @import "tailwindcss";
 
 /**
- * Design tokens.
+ * Design tokens: gallery monochrome.
  *
- * DARK-FIRST. The product is designed on near-black and light mode is a true inverse, not
- * a bleached afterthought. `#09090B` rather than `#000000`: pure black kills the sense of
- * depth because nothing can sit behind it.
+ * The platform is half publication now, so the language is editorial rather than
+ * dev-tool. A high-contrast serif carries the display sizes and a neutral sans carries
+ * everything that has to be read at length.
  *
- * PALETTE LOCK: neutral greys plus exactly one accent, a lime that reads as a signal
- * rather than a decoration. Green and red appear only as state (complete, failed), never
- * as styling.
+ * PALETTE LOCK: four supplied colours, used at both ends of the range in both themes.
  *
- * The accent is split in two on purpose:
- *   --accent      a fill. Always carries --accent-ink-on text. Identical in both themes.
- *   --accent-text the accent used AS text. Bright lime on dark, deep olive on light,
- *                 because bright lime on a white page is unreadable at body size.
- * Splitting them makes an unreadable pairing impossible to assemble by accident.
+ *   #000000  black
+ *   #1F150C  near-black, warm
+ *   #412D15  mid brown
+ *   #E1DCC9  bone
  *
- * SHAPE LOCK: three radii, no others. Controls are pills, containers are cards, fields
- * are inputs.
+ * Light mode puts bone on the ground and black on the type; dark mode swaps them. The mid
+ * brown is the connective tissue in both: rules, muted type, chips and hover states.
  *
- * No glows. On a dark UI a glow is the fastest way to look like a template.
+ * Surfaces and hairlines are tints and shades mixed between those four rather than new
+ * hues, so the whole interface stays inside the supplied range. Every derived value is
+ * marked below.
+ *
+ *   --accent      a fill. Carries --accent-ink-on.
+ *   --accent-text the accent used AS text, chosen per theme so it clears AA at body size.
+ *
+ * SHAPE LOCK: soft. Cards at 14px and controls at 10px. The near-square scale this
+ * replaces read as austere at the sizes actually used; rounded corners are what makes a
+ * card feel like an object worth clicking.
+ *
+ * No pure #000 or #fff: both flatten the paper.
  */
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* Light mode: a warm-neutral paper, not a grey screen. */
 :root {
-  --page: #f7f7f6;
-  --surface: #fcfcfb;
-  --surface-raised: #ffffff;
-  --shell: #ededeb;
+  /* Bone ground. Surfaces are the same bone lifted or dropped a few percent, so the page
+     reads as one material rather than as panels cut from different paper. */
+  --page: #e1dcc9;
+  --surface: #d8d2bb;      /* derived: bone, shaded */
+  --surface-raised: #ebe7d9; /* derived: bone, tinted */
+  --shell: #cfc7ac;         /* derived: bone, shaded further */
 
-  --text: #131316;
-  --text-muted: #55555e;
-  --text-subtle: #75757f;
+  --text: #000000;
+  --text-muted: #412d15;
+  --text-subtle: #6e5b3e;   /* derived: mid brown lifted toward bone */
 
-  --line: #e3e3e0;
-  --line-strong: #cfcfcb;
+  --line: #c5bc9e;          /* derived */
+  --line-strong: #a2977a;   /* derived */
 
-  --accent: #c8f751;
-  --accent-hover: #bdec44;
-  --accent-ink-on: #10130a;
-  --accent-text: #4a6600;
-  --accent-soft: #f1fbd6;
+  /* The primary fill is the warm near-black carrying bone text: about 14:1, and the
+     strongest contrast the supplied palette allows. The mid brown is the text accent. */
+  --accent: #1f150c;
+  --accent-hover: #000000;
+  --accent-ink-on: #e1dcc9;
+  --accent-text: #412d15;
+  --accent-soft: #d3cbb0;   /* derived */
 
-  --success: #16794a;
-  --success-soft: #e7f7ef;
-  --danger: #b4231f;
-  --danger-soft: #fdf0ef;
+  /* State stays legible against bone and sits in the same warm family. */
+  --success: #3d5c2a;
+  --success-soft: #d7dcc2;
+  --danger: #7a2418;
+  --danger-soft: #e5d2c6;
 
-  --ring: #4a6600;
+  --ring: #412d15;
 
-  --radius-pill: 9999px;
   --radius-card: 0.875rem;
-  --radius-input: 0.5rem;
+  --radius-input: 0.625rem;
+  --radius-control: 0.625rem;
 
-  --shadow-ambient: 0 1px 2px rgb(19 19 22 / 0.05), 0 10px 28px -14px rgb(19 19 22 / 0.16);
-  --shadow-lifted: 0 2px 4px rgb(19 19 22 / 0.06), 0 22px 48px -20px rgb(19 19 22 / 0.24);
+  --shadow-ambient: 0 1px 2px rgb(10 10 11 / 0.05), 0 10px 24px -14px rgb(10 10 11 / 0.14);
+  --shadow-lifted: 0 2px 8px rgb(10 10 11 / 0.08), 0 28px 60px -26px rgb(10 10 11 / 0.28);
+
+  /* Glass.
+     Three parts, because a single translucent fill is not glass — it is a faded box.
+     `fill` is the tint, `edge` is the lit top rim where the pane catches light, and
+     `underline` is the shadowed bottom rim. Light mode keeps the fill high: bone at 55%
+     over a dark section turns to mud and the wordmark stops being readable, which is the
+     usual way a glass header fails an accessibility check. */
+  --glass-fill: color-mix(in srgb, var(--surface-raised) 56%, transparent);
+  --glass-edge: color-mix(in srgb, #ffffff 90%, transparent);
+  --glass-underline: color-mix(in srgb, var(--line-strong) 34%, transparent);
+
+  /* The sheen is what separates glass from a translucent rectangle. A real pane is lit
+     unevenly — brighter where it faces the light, falling off across the face — so a
+     single flat alpha always reads as tinted plastic no matter how much blur is behind
+     it. Runs top-left to bottom-right and dies before the halfway point. */
+  --glass-sheen: linear-gradient(
+    135deg,
+    color-mix(in srgb, #ffffff 42%, transparent) 0%,
+    color-mix(in srgb, #ffffff 10%, transparent) 34%,
+    transparent 62%
+  );
+
+  --grain-opacity: 0.022;
 }
 
 [data-theme="dark"] {
-  --page: #09090b;
-  --surface: #101013;
-  --surface-raised: #17171b;
-  --shell: #1e1e23;
+  /* Black ground, with the warm near-black as the surface above it. */
+  --page: #000000;
+  --surface: #120c06;       /* derived: between black and the warm near-black */
+  --surface-raised: #1f150c;
+  --shell: #2b1e11;         /* derived: near-black lifted toward mid brown */
 
-  --text: #f4f4f5;
-  --text-muted: #a2a2ad;
-  --text-subtle: #7e7e8a;
+  --text: #e1dcc9;
+  --text-muted: #a3937a;    /* derived: bone dropped toward mid brown */
+  --text-subtle: #7a6b53;   /* derived */
 
-  --line: #232329;
-  --line-strong: #34343d;
+  --line: #2a1d10;          /* derived */
+  --line-strong: #412d15;
 
-  --accent: #c8f751;
-  --accent-hover: #d6ff6a;
-  --accent-ink-on: #10130a;
-  --accent-text: #c8f751;
-  --accent-soft: #1c2410;
+  /* Inverted: bone becomes the fill and the warm near-black the ink on it. The mid brown
+     is too dark to read against black, so bone carries accent text here as well and
+     emphasis comes from weight rather than hue. */
+  --accent: #e1dcc9;
+  --accent-hover: #f0ecdd;  /* derived */
+  --accent-ink-on: #1f150c;
+  --accent-text: #e1dcc9;
+  --accent-soft: #241809;   /* derived */
 
-  --success: #4ade80;
-  --success-soft: #0e2419;
-  --danger: #f87171;
-  --danger-soft: #2b1315;
+  --success: #a8c08a;
+  --success-soft: #17200f;
+  --danger: #d9917f;
+  --danger-soft: #241109;
 
-  --ring: #c8f751;
+  --ring: #e1dcc9;
 
-  /* Dark surfaces separate by value, not by shadow, so these stay restrained. */
-  --shadow-ambient: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 28px -14px rgb(0 0 0 / 0.7);
-  --shadow-lifted: 0 2px 4px rgb(0 0 0 / 0.55), 0 22px 48px -20px rgb(0 0 0 / 0.8);
+  --shadow-ambient: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 30px -18px rgb(0 0 0 / 0.7);
+  --shadow-lifted: 0 2px 6px rgb(0 0 0 / 0.55), 0 26px 56px -28px rgb(0 0 0 / 0.8);
+
+  /* Dark glass can sit lower, because the page behind it is already dark: there is no
+     bright content for the pane to wash out, and a lower fill lets the blur be seen. The
+     rim switches from white to bone — a white hairline on black reads as a rendering
+     artefact rather than as a lit edge. */
+  --glass-fill: color-mix(in srgb, var(--surface-raised) 42%, transparent);
+  --glass-edge: color-mix(in srgb, var(--text) 24%, transparent);
+  --glass-underline: color-mix(in srgb, #000000 50%, transparent);
+
+  /* Bone rather than white, and weaker. A white sheen on a dark pane reads as a blown
+     highlight — the pane looks like it is reflecting a studio light that is not in the
+     scene. Bone at low alpha reads as the page glowing through. */
+  --glass-sheen: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--text) 12%, transparent) 0%,
+    color-mix(in srgb, var(--text) 4%, transparent) 34%,
+    transparent 62%
+  );
+
+  --grain-opacity: 0.035;
 }
 
 @theme inline {
@@ -115,15 +173,16 @@
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
 
-  --radius-pill: var(--radius-pill);
   --radius-card: var(--radius-card);
   --radius-input: var(--radius-input);
+  --radius-control: var(--radius-control);
 
+  --font-serif: var(--font-playfair), ui-serif, Georgia, serif;
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
-  /* One curve for the whole product: quick departure, long settle. */
-  --ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
+  /* One curve everywhere. Slower than the previous design: restraint reads as composure. */
+  --ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @layer base {
@@ -142,15 +201,32 @@
     font-family: var(--font-sans);
     /* 16px floor: anything smaller triggers zoom-on-focus in iOS Safari. */
     font-size: 1rem;
-    line-height: 1.6;
+    line-height: 1.65;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+
+  /**
+   * Paper grain.
+   *
+   * Fixed and pointer-events-none so it never intercepts a click and never repaints while
+   * the page scrolls. Attaching this to a scrolling container is what makes grain effects
+   * destroy mobile frame rates.
+   */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: var(--grain-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
-    border-radius: 4px;
+    border-radius: 2px;
   }
 
   ::selection {
@@ -160,58 +236,82 @@
 
   h1,
   h2,
-  h3,
-  h4 {
-    letter-spacing: -0.025em;
-    line-height: 1.08;
+  h3 {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    line-height: 1.1;
     text-wrap: balance;
+  }
+
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   p {
     text-wrap: pretty;
   }
 
-  /* Display type needs descender room; leading-none clips g, y, p, j. */
+  /* Display serifs have long descenders; leading-none clips g, y, p and j. */
   .display-tight {
-    line-height: 1.04;
-    padding-bottom: 0.08em;
+    line-height: 1.06;
+    padding-bottom: 0.1em;
   }
 }
 
 @layer utilities {
   /**
-   * Mono microlabel. Used for data labels and numerals, which is what gives the interface
-   * its instrument-panel character. NOT used as a section eyebrow above every heading:
-   * that rhythm is the single most recognisable machine-generated layout tell.
+   * Small caps label. Used for data and metadata, never stacked above every section
+   * heading: that rhythm is the most recognisable machine-generated layout there is.
    */
   .microlabel {
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     font-size: 0.6875rem;
     line-height: 1;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--text-subtle);
   }
 
-  /**
-   * Hairline rule used to build the structural grid. A single shared token so every
-   * divider on the site is the same weight and colour.
-   */
-  .rule {
-    border-color: var(--line);
+  /** Body copy set for reading rather than scanning. */
+  .prose-editorial {
+    font-size: 1.125rem;
+    line-height: 1.75;
+    max-width: 68ch;
+  }
+
+  /** The one decorative flourish: a short rule that marks a section opening. */
+  .rule-accent::before {
+    content: '';
+    display: block;
+    width: 2.5rem;
+    height: 1px;
+    margin-bottom: 1.5rem;
+    background-color: var(--text);
   }
 
   /**
-   * Inset highlight along the top edge of a raised surface. On dark UI this is what makes
-   * a panel read as lit from above rather than as a flat lighter rectangle. Replaces the
-   * glow that this kind of interface usually reaches for.
+   * Editorial index row.
+   *
+   * Replaces the card grid. A numbered rule-separated list carries far more items in the
+   * same space, reads as a contents page rather than a shop, and does not fall into the
+   * three-equal-cards pattern that makes generated pages recognisable.
    */
-  .lit {
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
+  .index-row {
+    display: grid;
+    align-items: baseline;
+    gap: 1rem 1.5rem;
+    border-top: 1px solid var(--line);
+    padding-block: 1.75rem;
+    transition: background-color 300ms var(--ease-settle);
   }
 
-  :root .lit {
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9);
+  .index-row:last-child {
+    border-bottom: 1px solid var(--line);
   }
 }
 

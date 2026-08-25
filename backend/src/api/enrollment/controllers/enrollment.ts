@@ -2,6 +2,7 @@ import { factories } from '@strapi/strapi';
 import type { AuthUser } from '../../../utils/permissions';
 import { findCourseByAnyId } from '../../../utils/resolve';
 import { computeCourseProgress } from '../../../utils/progress';
+import { notify } from '../../../utils/notify';
 
 /**
  * Enrollment is never created through the generic `POST /api/enrollments` route.
@@ -58,6 +59,19 @@ export default factories.createCoreController('api::enrollment.enrollment', ({ s
         course: course.id,
         enrolledAt: new Date().toISOString(),
       },
+    });
+
+    const owner = await strapi.db.query('api::course.course').findOne({
+      where: { id: course.id },
+      populate: { owner: true },
+    });
+
+    await notify(strapi, {
+      recipientId: owner?.owner?.id,
+      actorId: user.id,
+      type: 'course-enrolled',
+      title: `${user.username} enrolled in ${course.title}`,
+      href: `/studio`,
     });
 
     ctx.status = 201;

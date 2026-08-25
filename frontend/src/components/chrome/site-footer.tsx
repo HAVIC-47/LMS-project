@@ -17,7 +17,7 @@ export function SiteFooter() {
         <div className="flex flex-col gap-10 sm:flex-row sm:justify-between">
           <div className="flex max-w-sm flex-col gap-3">
             <Link href="/" className="flex items-center gap-2 text-base font-semibold text-text">
-              <span aria-hidden className="size-2.5 rounded-pill bg-accent" />
+              <span aria-hidden className="size-2.5 rounded-control bg-accent" />
               Kiln
             </Link>
             <p className="text-sm leading-relaxed text-text-muted">
@@ -33,7 +33,7 @@ export function SiteFooter() {
                 All courses
               </Link>
               <Link href="/blog" className="text-sm text-text-muted transition-colors hover:text-text">
-                Writing
+                Blog
               </Link>
             </nav>
 

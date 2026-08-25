@@ -4,8 +4,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeftIcon } from '@phosphor-icons/react/dist/ssr';
 import { Container } from '@/components/ui/primitives';
+import { PostEngagement } from '@/components/blog/post-engagement';
 import { getPostBySlug } from '@/lib/api/public';
-import { formatDate, readingTime, toParagraphs } from '@/lib/format';
+import { getSessionUser } from '@/lib/session';
+import { ROLES } from '@/lib/types';
+import { formatDate, readingTime, toParagraphs, isRenderableImage } from '@/lib/format';
 
 type PageProps = { params: Promise<{ slug: string }> };
 
@@ -32,13 +35,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
  */
 export default async function BlogPostPage({ params }: PageProps) {
   const { slug } = await params;
-  const post = await getPostBySlug(slug);
+  const [post, user] = await Promise.all([getPostBySlug(slug), getSessionUser()]);
 
   if (!post) {
     notFound();
   }
 
   const paragraphs = toParagraphs(post.body);
+
+  // Passed down so the client island knows whether to offer the comment box and the
+  // delete control. It is a UI hint only; the backend decides both again on every write.
+  const viewer = user
+    ? {
+        id: user.id,
+        username: user.username,
+        canModerate: user.role === ROLES.ADMIN || user.role === ROLES.CONTENT_MANAGER,
+      }
+    : null;
 
   return (
     <article className="py-16 lg:py-20">
@@ -52,7 +65,7 @@ export default async function BlogPostPage({ params }: PageProps) {
             aria-hidden
             className="transition-transform duration-300 [transition-timing-function:var(--ease-settle)] group-hover:-translate-x-0.5"
           />
-          All writing
+          All posts
         </Link>
 
         <header className="mx-auto flex w-full max-w-[68ch] flex-col gap-5">
@@ -64,7 +77,9 @@ export default async function BlogPostPage({ params }: PageProps) {
             <span>{readingTime(post.body)} min read</span>
           </div>
 
-          <h1 className="display-tight text-4xl font-semibold sm:text-5xl">{post.title}</h1>
+          <h1 className="display-tight font-serif text-4xl font-normal sm:text-5xl lg:text-6xl">
+            {post.title}
+          </h1>
 
           {post.excerpt ? (
             <p className="text-lg leading-relaxed text-text-muted">{post.excerpt}</p>
@@ -75,7 +90,7 @@ export default async function BlogPostPage({ params }: PageProps) {
           ) : null}
         </header>
 
-        {post.coverImageUrl ? (
+        {isRenderableImage(post.coverImageUrl) ? (
           <div className="relative aspect-[21/9] w-full overflow-hidden rounded-card bg-shell">
             <Image
               src={post.coverImageUrl}
@@ -89,17 +104,19 @@ export default async function BlogPostPage({ params }: PageProps) {
         ) : null}
 
         {/* 68ch keeps lines inside the comfortable 65 to 75 character band. */}
-        <div className="mx-auto flex w-full max-w-[68ch] flex-col gap-6">
+        <div className="prose-editorial mx-auto flex w-full flex-col gap-6">
           {paragraphs.length === 0 ? (
             <p className="text-text-muted">This post has no body yet.</p>
           ) : (
             paragraphs.map((paragraph, index) => (
-              <p key={index} className="text-lg leading-relaxed text-text">
+              <p key={index} className="text-text">
                 {paragraph}
               </p>
             ))
           )}
         </div>
+
+        <PostEngagement postDocumentId={post.documentId} viewer={viewer} />
       </Container>
     </article>
   );

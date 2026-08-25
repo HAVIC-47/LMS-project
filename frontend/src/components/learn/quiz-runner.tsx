@@ -146,8 +146,8 @@ export function QuizRunner({ quiz, courseSlug }: { quiz: StudentQuiz; courseSlug
                           ) : isWrongPick ? (
                             <XCircleIcon size={18} weight="fill" />
                           ) : isSelected ? (
-                            <span className="flex size-[18px] items-center justify-center rounded-pill border-2 border-accent">
-                              <span className="size-2 rounded-pill bg-accent" />
+                            <span className="flex size-[18px] items-center justify-center rounded-control border-2 border-accent">
+                              <span className="size-2 rounded-control bg-accent" />
                             </span>
                           ) : (
                             <CircleIcon size={18} />

@@ -68,7 +68,7 @@ export function LessonSidebar({
                 <span
                   aria-hidden
                   className={cn(
-                    'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-pill',
+                    'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-control',
                     isDone
                       ? 'bg-accent text-accent-ink-on'
                       : 'border border-line-strong text-transparent'

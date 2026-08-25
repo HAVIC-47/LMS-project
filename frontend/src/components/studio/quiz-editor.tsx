@@ -295,7 +295,7 @@ function ExistingQuiz({ quiz, onChanged }: { quiz: AuthoredQuiz; onChanged: () =
                   type="button"
                   onClick={() => startEdit(question)}
                   aria-label="Edit question"
-                  className="flex size-11 cursor-pointer items-center justify-center rounded-pill text-text-muted transition-colors hover:bg-shell hover:text-text"
+                  className="flex size-11 cursor-pointer items-center justify-center rounded-control text-text-muted transition-colors hover:bg-shell hover:text-text"
                 >
                   <PencilSimpleIcon size={16} aria-hidden />
                 </button>
@@ -304,7 +304,7 @@ function ExistingQuiz({ quiz, onChanged }: { quiz: AuthoredQuiz; onChanged: () =
                   onClick={() => remove(question)}
                   disabled={busyId === question.documentId}
                   aria-label="Delete question"
-                  className="flex size-11 cursor-pointer items-center justify-center rounded-pill text-text-muted transition-colors hover:bg-danger-soft hover:text-danger disabled:opacity-50"
+                  className="flex size-11 cursor-pointer items-center justify-center rounded-control text-text-muted transition-colors hover:bg-danger-soft hover:text-danger disabled:opacity-50"
                 >
                   <TrashIcon size={16} aria-hidden />
                 </button>
@@ -364,7 +364,7 @@ function ExistingQuiz({ quiz, onChanged }: { quiz: AuthoredQuiz; onChanged: () =
                     onClick={() => removeOption(index)}
                     disabled={draft.options.length <= 2}
                     aria-label={`Remove option ${index + 1}`}
-                    className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-pill text-text-muted transition-colors hover:bg-danger-soft hover:text-danger disabled:opacity-30"
+                    className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-control text-text-muted transition-colors hover:bg-danger-soft hover:text-danger disabled:opacity-30"
                   >
                     <TrashIcon size={15} aria-hidden />
                   </button>

@@ -17,7 +17,7 @@ type Variant = 'solid' | 'outline' | 'ghost' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
 
 const base =
-  'group relative inline-flex items-center justify-center gap-2 rounded-pill font-medium ' +
+  'group relative inline-flex items-center justify-center gap-2 rounded-control font-medium ' +
   'whitespace-nowrap cursor-pointer select-none ' +
   'transition-[background-color,border-color,color,transform] duration-200 ' +
   '[transition-timing-function:var(--ease-settle)] ' +

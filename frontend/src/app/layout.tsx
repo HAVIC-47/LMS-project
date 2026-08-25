@@ -1,10 +1,25 @@
 import type { Metadata, Viewport } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
+import { Playfair_Display } from 'next/font/google';
 import { SiteHeader } from '@/components/chrome/site-header';
 import { SiteFooter } from '@/components/chrome/site-footer';
 import { getSessionUser } from '@/lib/session';
+import { getUnreadCount } from '@/lib/api/notifications';
 import './globals.css';
+
+/**
+ * The display face. Self-hosted by `next/font`, so there is no render-blocking request to
+ * Google and no layout shift when it arrives. `display: 'swap'` shows the fallback first
+ * rather than leaving headings invisible.
+ */
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  style: ['normal', 'italic'],
+  variable: '--font-playfair',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: {
@@ -19,8 +34,8 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f4f4f5' },
-    { media: '(prefers-color-scheme: dark)', color: '#09090b' },
+    { media: '(prefers-color-scheme: light)', color: '#f7f5f0' },
+    { media: '(prefers-color-scheme: dark)', color: '#12140f' },
   ],
 };
 
@@ -47,8 +62,12 @@ const themeBootstrap = `
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
 
+  // Fetched here so the badge is correct on first paint rather than appearing a moment
+  // after hydration. Skipped entirely when nobody is signed in.
+  const unreadNotifications = user ? await getUnreadCount() : 0;
+
   return (
-    <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable} ${playfair.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
         {/* Scroll reveals start hidden and are shown by JavaScript. With scripting off
@@ -60,12 +79,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-[100dvh] antialiased">
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-pill focus:bg-accent focus:px-5 focus:py-2.5 focus:text-sm focus:font-medium focus:text-accent-ink-on"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-control focus:bg-accent focus:px-5 focus:py-2.5 focus:text-sm focus:font-medium focus:text-accent-ink-on"
         >
           Skip to content
         </a>
 
-        <SiteHeader user={user} />
+        <SiteHeader user={user} unreadNotifications={unreadNotifications} />
 
         <main id="main" className="min-h-[60dvh]">
           {children}

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Field, FormError } from '@/components/ui/field';
 import { Checkbox, Select, TextArea } from './form-controls';
+import { ImageField } from './image-field';
 import { createEntry, deleteEntry, updateEntry } from '@/lib/manage';
 import type { CourseLevel } from '@/lib/types';
 
@@ -159,11 +160,11 @@ export function CourseForm({ initial }: { initial?: CourseDraft }) {
         hint="Shown on the catalog card and the course page."
       />
 
-      <Field
-        label="Cover image URL"
+      <ImageField
+        label="Cover image"
         value={draft.coverImageUrl}
-        onChange={(event) => set('coverImageUrl', event.target.value)}
-        hint="Images are referenced by URL. Unsplash and Picsum links are allowed."
+        onChange={(url) => set('coverImageUrl', url)}
+        hint="Shown on the catalog index and the course page."
       />
 
       <Select

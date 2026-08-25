@@ -13,9 +13,9 @@ export default function DashboardLoading() {
           {Array.from({ length: 3 }).map((_, index) => (
             <div key={index} className="flex flex-col gap-4 rounded-card border border-line bg-surface p-5">
               <Skeleton className="aspect-[16/9] w-full rounded-input" />
-              <Skeleton className="h-6 w-20 rounded-pill" />
+              <Skeleton className="h-6 w-20 rounded-control" />
               <Skeleton className="h-5 w-3/4" />
-              <Skeleton className="h-1.5 w-full rounded-pill" />
+              <Skeleton className="h-1.5 w-full rounded-control" />
             </div>
           ))}
         </div>

@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BooksIcon } from '@phosphor-icons/react/dist/ssr';
 import { Container, EmptyState, SectionHeading } from '@/components/ui/primitives';
-import { Reveal } from '@/components/ui/reveal';
 import { CourseCard } from '@/components/marketing/course-card';
+import { Reveal } from '@/components/ui/reveal';
 import { getPublishedCourses } from '@/lib/api/public';
 import { LEVEL_LABELS, type CourseLevel } from '@/lib/types';
 import { cn } from '@/lib/cn';
@@ -77,9 +77,9 @@ export default async function CoursesPage({
             }
           />
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {visible.map((course, index) => (
-              <Reveal key={course.documentId} delay={Math.min(index, 5) * 0.06}>
+              <Reveal key={course.documentId} delay={Math.min(index, 5) * 0.05}>
                 <CourseCard course={course} priority={index < 3} />
               </Reveal>
             ))}
@@ -105,10 +105,12 @@ function FilterPill({
       aria-current={active ? 'true' : undefined}
       className={cn(
         // 44px tall so it stays a comfortable touch target on mobile.
-        'flex h-11 cursor-pointer items-center rounded-pill border px-4 text-sm transition-colors duration-200',
+        // Text links on a rule rather than filled chips: a row of solid pills was a large
+        // part of what made every accent colour dominate the page.
+        'flex h-11 cursor-pointer items-center text-sm underline-offset-[6px] transition-colors duration-200',
         active
-          ? 'border-accent bg-accent text-accent-ink-on'
-          : 'border-line-strong bg-surface-raised text-text-muted hover:border-accent hover:text-accent-text'
+          ? 'font-medium text-text underline decoration-text'
+          : 'text-text-muted underline decoration-transparent hover:text-text hover:decoration-line-strong'
       )}
     >
       {children}

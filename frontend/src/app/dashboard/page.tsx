@@ -8,6 +8,7 @@ import { requireUser } from '@/lib/guards';
 import { getMyEnrollments } from '@/lib/api/student';
 import { getOwnedCourses, getPlatformStats } from '@/lib/api/staff';
 import { ROLE_LABELS, ROLES } from '@/lib/types';
+import { isRenderableImage } from '@/lib/format';
 
 export const metadata: Metadata = {
   title: 'Dashboard',
@@ -90,7 +91,7 @@ async function StudentView() {
             href={`/learn/${enrollment.course.slug}`}
             className="group flex cursor-pointer flex-col gap-4 rounded-card border border-line bg-surface p-5 transition-[border-color,transform] duration-500 [transition-timing-function:var(--ease-settle)] hover:-translate-y-0.5 hover:border-line-strong"
           >
-            {enrollment.course.coverImageUrl ? (
+            {isRenderableImage(enrollment.course.coverImageUrl) ? (
               <div className="relative aspect-[16/9] overflow-hidden rounded-input bg-shell">
                 <Image
                   src={enrollment.course.coverImageUrl}

@@ -59,7 +59,7 @@ export function CompleteButton({
       <div className="flex flex-wrap items-center gap-3">
         {completed ? (
           <>
-            <span className="flex items-center gap-2 rounded-pill border border-success/30 bg-success-soft px-4 py-2.5 text-sm font-medium text-success">
+            <span className="flex items-center gap-2 rounded-control border border-success/30 bg-success-soft px-4 py-2.5 text-sm font-medium text-success">
               <CheckIcon size={15} weight="bold" aria-hidden />
               Completed
             </span>

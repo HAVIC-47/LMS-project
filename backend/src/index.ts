@@ -6,6 +6,7 @@ import {
   setDefaultSignupRole,
 } from './bootstrap/roles';
 import { seedDemoData } from './bootstrap/seed';
+import { seedCatalog } from './bootstrap/catalog';
 
 export default {
   register(/* { strapi }: { strapi: Core.Strapi } */) {},
@@ -33,6 +34,18 @@ export default {
       } catch (error) {
         // A failed seed must not stop the server — the app is still usable, just empty.
         strapi.log.error(`[lms] demo seed failed: ${(error as Error).message}`);
+      }
+    }
+
+    // Its own flag, because it answers a different question. The demo seed is a fixture
+    // and stops dead once any course exists; the catalog is content and is safe to run
+    // against a database that already has some — it skips per slug rather than per run,
+    // so leaving this on is harmless and re-running only ever adds what is missing.
+    if (process.env.SEED_CATALOG === 'true') {
+      try {
+        await seedCatalog(strapi);
+      } catch (error) {
+        strapi.log.error(`[lms] catalog seed failed: ${(error as Error).message}`);
       }
     }
 

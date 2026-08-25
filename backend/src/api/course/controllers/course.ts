@@ -11,6 +11,7 @@ import {
 import { findCourseByDocumentId, isEnrolled, linkUserRelation, readRelationInput } from '../../../utils/resolve';
 import { sanitizeCourseResponse } from '../../../utils/sanitize';
 import { computeCourseProgress } from '../../../utils/progress';
+import { findEnrolledStudentIds, notifyMany } from '../../../utils/notify';
 
 /**
  * Attaches the course owner as an `instructor` field.

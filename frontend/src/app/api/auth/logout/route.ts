@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { useSecureCookies } from '@/lib/session';
 import { SESSION_COOKIE } from '@/lib/strapi';
 
 /**
@@ -14,7 +15,8 @@ export async function POST() {
   response.cookies.set(SESSION_COOKIE, '', {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    // Must match how the cookie was set, or the browser will not clear it.
+    secure: useSecureCookies,
     path: '/',
     maxAge: 0,
   });

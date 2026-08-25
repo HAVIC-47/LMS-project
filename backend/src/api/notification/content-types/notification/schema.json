@@ -1,0 +1,60 @@
+{
+  "kind": "collectionType",
+  "collectionName": "notifications",
+  "info": {
+    "singularName": "notification",
+    "pluralName": "notifications",
+    "displayName": "Notification",
+    "description": "An in-app message for one recipient, raised by something that happened elsewhere."
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "recipient": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "actor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "comment-on-post",
+        "reply-to-comment",
+        "post-liked",
+        "course-enrolled",
+        "quiz-submitted",
+        "quiz-result",
+        "course-published",
+        "lesson-added",
+        "post-published",
+        "role-changed"
+      ],
+      "required": true
+    },
+    "title": {
+      "type": "string",
+      "required": true,
+      "maxLength": 160
+    },
+    "body": {
+      "type": "text",
+      "maxLength": 400
+    },
+    "href": {
+      "type": "string"
+    },
+    "read": {
+      "type": "boolean",
+      "required": true,
+      "default": false
+    },
+    "readAt": {
+      "type": "datetime"
+    }
+  }
+}

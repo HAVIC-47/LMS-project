@@ -1,16 +1,24 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
-import Link from 'next/link';
 import { NotePencilIcon } from '@phosphor-icons/react/dist/ssr';
 import { Container, EmptyState, SectionHeading } from '@/components/ui/primitives';
 import { Reveal } from '@/components/ui/reveal';
+import { PostCard } from '@/components/marketing/post-card';
+import { cn } from '@/lib/cn';
 import { getPublishedPosts } from '@/lib/api/public';
-import { formatDate } from '@/lib/format';
 
 export const metadata: Metadata = {
-  title: 'Writing',
+  title: 'Blog',
   description: 'Notes on learning, teaching and building the platform.',
 };
+
+/** Cards per line on desktop. Also the chunk size, so the two must stay in step. */
+const ROW_SIZE = 3;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
 
 /**
  * Blog index.
@@ -19,8 +27,13 @@ export const metadata: Metadata = {
  * here. The controller pins anonymous and non-editorial callers to `status=published`, so
  * a draft cannot be surfaced by appending a query parameter to the API call underneath.
  *
- * The first post is given a wider treatment so the list has a lead rather than reading as
- * an undifferentiated stack of rows.
+ * Every card is the same size. The lead used to take a permanent double-width tile, which
+ * answered "give the eye somewhere to land" by deciding for the reader which post was
+ * worth landing on. Instead the row expands under the pointer: the reader picks, one card
+ * at a time, and the grid stays honest about the fact that all of these are just posts.
+ *
+ * Desktop only, and deliberately. On a phone there is no pointer to expand with, and a
+ * card that opens on tap would be a second meaning for a tap that already navigates.
  */
 export default async function BlogPage() {
   const posts = await getPublishedPosts();
@@ -29,7 +42,7 @@ export default async function BlogPage() {
     return (
       <div className="py-16 lg:py-20">
         <Container className="flex flex-col gap-12">
-          <SectionHeading as="h1" title="Writing" />
+          <SectionHeading as="h1" title="Blog" />
           <EmptyState
             icon={<NotePencilIcon size={32} aria-hidden />}
             title="Nothing published yet"
@@ -40,79 +53,72 @@ export default async function BlogPage() {
     );
   }
 
-  const [lead, ...rest] = posts;
+  const rows = chunk(posts, ROW_SIZE);
 
   return (
     <div className="py-16 lg:py-20">
-      <Container className="flex flex-col gap-14">
+      <Container className="flex flex-col gap-12">
         <SectionHeading
           as="h1"
-          title="Writing"
+          title="Blog"
           lede="Notes on learning, teaching and how this platform is put together."
         />
 
-        <Reveal>
-          <Link
-            href={`/blog/${lead.slug}`}
-            className="group grid gap-8 rounded-card border border-line bg-surface p-6 transition-colors duration-300 hover:border-line-strong sm:p-8 lg:grid-cols-2 lg:items-center"
-          >
-            {lead.coverImageUrl ? (
-              <div className="relative aspect-[16/10] overflow-hidden rounded-card bg-shell">
-                <Image
-                  src={lead.coverImageUrl}
-                  alt=""
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  priority
-                  className="object-cover transition-transform duration-700 [transition-timing-function:var(--ease-settle)] group-hover:scale-[1.02]"
+        {/*
+          Two layouts in one tree.
+
+          Below `lg` this is an ordinary grid and the row wrappers are `display: contents`,
+          so every card flows into the same grid and the chunking is invisible — a row of
+          three does not turn into a ragged 2 + 1 on a tablet.
+
+          From `lg` each row becomes its own flex line, which is what makes the expansion
+          possible: hovering a card raises its `flex-grow`, and because the flex algorithm
+          re-solves the whole line every frame, its neighbours give up their width smoothly
+          without a single tween of their own.
+        */}
+        <div className="grid gap-6 sm:grid-cols-2 lg:flex lg:flex-col">
+          {rows.map((row, rowIndex) => (
+            <div key={rowIndex} className="contents lg:flex lg:gap-6">
+              {row.map((post, columnIndex) => {
+                const index = rowIndex * ROW_SIZE + columnIndex;
+
+                return (
+                  <Reveal
+                    key={post.documentId}
+                    delay={Math.min(columnIndex, 5) * 0.05}
+                    className={cn(
+                      // `basis-0` so the three cards start dead equal regardless of how
+                      // much text each one holds, and `min-w-0` so a long title cannot
+                      // set a floor that stops a card ever being squeezed.
+                      'lg:min-w-0 lg:flex-1 lg:basis-0',
+                      // Only `flex-grow` transitions. Animating `flex` wholesale would
+                      // drag `flex-basis` along with it and fight the layout.
+                      'lg:motion-safe:transition-[flex-grow] lg:motion-safe:duration-500',
+                      'lg:[transition-timing-function:var(--ease-settle)]',
+                      // The expansion itself. Tailwind compiles `hover:` to
+                      // `@media (hover: hover)`, so a touch screen never gets a card stuck
+                      // open, and `motion-safe` keeps it out of reduced-motion entirely
+                      // rather than snapping it open with no transition.
+                      'lg:motion-safe:hover:flex-[2.4]'
+                    )}
+                  >
+                    <PostCard post={post} priority={index < ROW_SIZE} fixedMedia />
+                  </Reveal>
+                );
+              })}
+
+              {/* A short last row must leave its cards at one third, not stretch them
+                  across the line. The spacers only exist on the flex layout. */}
+              {Array.from({ length: ROW_SIZE - row.length }).map((_, index) => (
+                <div
+                  key={`spacer-${index}`}
+                  aria-hidden
+                  className="hidden lg:block lg:flex-1 lg:basis-0"
                 />
-              </div>
-            ) : null}
-
-            <div className="flex flex-col gap-4">
-              <p className="font-mono text-xs tabular-nums text-text-subtle">
-                {formatDate(lead.publishedAt ?? lead.createdAt)}
-              </p>
-              <h2 className="text-2xl font-semibold leading-snug text-text transition-colors duration-200 group-hover:text-accent-text sm:text-3xl">
-                {lead.title}
-              </h2>
-              {lead.excerpt ? (
-                <p className="max-w-[56ch] leading-relaxed text-text-muted">{lead.excerpt}</p>
-              ) : null}
-              {lead.author ? (
-                <p className="text-sm text-text-subtle">By {lead.author.username}</p>
-              ) : null}
+              ))}
             </div>
-          </Link>
-        </Reveal>
-
-        {rest.length > 0 ? (
-          <div className="flex flex-col">
-            {rest.map((post, index) => (
-              <Reveal key={post.documentId} delay={index * 0.06}>
-                <Link
-                  href={`/blog/${post.slug}`}
-                  className="group grid gap-2 border-b border-line py-7 transition-colors duration-300 first:border-t sm:grid-cols-12 sm:gap-6"
-                >
-                  <p className="font-mono text-xs tabular-nums text-text-subtle sm:col-span-3 sm:pt-1">
-                    {formatDate(post.publishedAt ?? post.createdAt)}
-                  </p>
-
-                  <div className="flex flex-col gap-2 sm:col-span-9">
-                    <h2 className="text-xl font-semibold text-text transition-colors duration-200 group-hover:text-accent-text">
-                      {post.title}
-                    </h2>
-                    {post.excerpt ? (
-                      <p className="max-w-[62ch] text-sm leading-relaxed text-text-muted">
-                        {post.excerpt}
-                      </p>
-                    ) : null}
-                  </div>
-                </Link>
-              </Reveal>
-            ))}
-          </div>
-        ) : null}
+          ))}
+        </div>
       </Container>
     </div>
   );

@@ -15,6 +15,7 @@ import { getCourseBySlug } from '@/lib/api/public';
 import { isEnrolledInCourse } from '@/lib/api/student';
 import { getSessionUser } from '@/lib/session';
 import { ROLES } from '@/lib/types';
+import { isRenderableImage } from '@/lib/format';
 
 type PageProps = { params: Promise<{ slug: string }> };
 
@@ -90,7 +91,7 @@ export default async function CourseDetailPage({ params }: PageProps) {
             />
           </div>
 
-          {course.coverImageUrl ? (
+          {isRenderableImage(course.coverImageUrl) ? (
             <div className="lg:col-span-5">
               <Panel className="overflow-hidden">
                 <div className="relative aspect-[4/3]">

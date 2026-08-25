@@ -47,3 +47,31 @@ export function readingTime(body: string | null | undefined): number {
 
   return Math.max(1, Math.round(words / 200));
 }
+
+/**
+ * Whether a stored image URL is safe to hand to `next/image`.
+ *
+ * `next/image` throws on a src it cannot parse, and a thrown error in a Server Component
+ * takes down the whole route. Cover images are typed in by editors, so a value like "no"
+ * or a half-pasted URL is not hypothetical: one such row broke the entire blog index for
+ * every visitor.
+ *
+ * Guarding at the render site rather than validating on save is deliberate. Rows already
+ * in the database were never validated, and a public page should not depend on every
+ * historical value having been well-formed.
+ */
+export function isRenderableImage(url: string | null | undefined): url is string {
+  if (!url) return false;
+
+  const value = url.trim();
+
+  // A root-relative path is valid for next/image and needs no host check.
+  if (value.startsWith('/')) return true;
+
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}

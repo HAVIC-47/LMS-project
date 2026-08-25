@@ -88,6 +88,8 @@ Two Playwright suites run against a live backend and a running frontend:
 python frontend/scripts/browser-test.py            # public pages, auth, all four roles
 python frontend/scripts/browser-test-student.py    # lessons, progress, quiz
 python frontend/scripts/browser-test-authoring.py  # studio, blog publishing, admin roles
+python frontend/scripts/browser-test-social.py     # blog reading, likes, comments, notifications
+python frontend/scripts/browser-test-uploads.py    # cover uploads, and the monochrome design
 ```
 
 They assert behaviour rather than pixels: that a lesson body never appears on a public
@@ -109,15 +111,33 @@ asserting `document.cookie` does not contain it.
 
 ### Design system
 
-Dark-first. Tokens live in `src/app/globals.css` and nothing hard-codes a colour.
+Four supplied colours, used at both ends of the range in both themes.
 
-The accent is split in two deliberately: `--accent` is a fill that always carries
-`--accent-ink-on` text, and `--accent-text` is the accent used *as* text, which is bright
-lime on dark and a deep olive on light. Splitting them means an unreadable pairing cannot
-be assembled by picking the wrong utility.
+| | |
+|---|---|
+| `#000000` | black |
+| `#1F150C` | warm near-black |
+| `#412D15` | mid brown |
+| `#E1DCC9` | bone |
 
-Three radii, no others. Mono numerals and small uppercase labels are reserved for data,
-never used as a heading eyebrow.
+Light mode puts bone on the ground and black on the type; dark mode swaps them. The mid
+brown is the connective tissue in both: rules, muted type, chips and hover states. Surfaces
+and hairlines are tints and shades mixed between those four rather than new hues, and every
+derived value is marked as such in `globals.css`.
+
+The primary fill is the warm near-black carrying bone text in light (about 14:1), inverted
+in dark. A browser test asserts all four seeds actually appear on the page, so the palette
+cannot drift.
+
+Playfair Display carries the display sizes, Geist carries everything read at length.
+Cards at 14px radius, controls at 10px.
+
+**The hero** is a full-bleed black band pulled up behind the floating header, with bone
+display type on an asymmetric 6/5 and the image bleeding off the right edge. Putting the
+two extremes of the palette against each other in the first screen is the strongest move
+it allows, and the hard edge where the band ends gives the page structure.
+
+Courses and blog posts render as image-forward cards.
 
 ---
 
@@ -193,6 +213,24 @@ why.
 - [x] Quiz runner with instant auto-graded score, marked answers and attempt history
 - [x] Player is student-only, enrollment-gated, and 404s on unpublished courses
 - [x] 25-check browser suite for the student journey
+**Part 6 - monochrome redesign and cover uploads** ✅
+
+- [x] Brand colour removed entirely; ink on paper, colour only as state
+- [x] Landing and catalog relaid out around an editorial index, not card grids
+- [x] Cover images uploaded from the device, with drag and drop, or pasted as a URL
+- [x] Upload permission limited to the three authoring roles
+- [x] `isRenderableImage` guard, after a malformed cover URL took down the blog index
+- [x] 18-check browser suite for uploads and the redesign
+
+**Part 5 - blog engagement, notifications, editorial redesign** ✅
+
+- [x] Blog linked from the header as "Blog" (it was labelled "Writing", which hid it)
+- [x] Likes on posts, public count, toggle for signed-in users
+- [x] Threaded comments with replies, edit and delete, moderation for admin and CM
+- [x] Notification system across ten events, with a polling bell and a full inbox
+- [x] Frontend redesigned: ink-and-paper editorial, Playfair over Geist, deep green accent
+- [x] 26-check browser suite for reading, engagement and notifications
+
 **Part 4 - authoring, admin and deployment** ✅
 
 - [x] Studio at `/studio`: course list scoped by role, create, edit, delete
@@ -205,6 +243,77 @@ why.
 - [x] Publishing invalidates the cached public pages, so it is visible immediately
 - [x] Deployment configs for Railway and Vercel
 - [x] 32-check browser suite for authoring, publishing and role management
+
+---
+
+## Blog, discussion and notifications
+
+The blog is public and linked from the header. Anyone can read a published post and its
+discussion; writing requires an account.
+
+**Likes** are rows, not a counter. The count is `SELECT count(*)`, so it cannot drift from
+the set of people who actually liked the post and unliking cannot push it below zero.
+
+**Comments** nest one level. Replies to replies are attached to the top-level comment they
+descend from, because past one level the indentation costs more than the hierarchy buys.
+The author can edit or delete their own; an admin or content manager can delete any, but
+cannot edit one: putting words in somebody's mouth is worse than removing them.
+
+Both reference the post by `postDocumentId` rather than a Strapi relation. Draft & Publish
+stores a draft row and a published row per document, and a relation would bind each comment
+to one of those rows and strand it on the next publish. The trade is no database cascade, so
+deleting a post clears its comments and likes explicitly.
+
+**Notifications** are raised by `src/utils/notify.ts`, which every feature calls. Ten event
+types are wired:
+
+| Event | Who hears about it |
+|---|---|
+| Comment on a post | the post's author |
+| Reply to a comment | the person replied to |
+| Post liked | the post's author |
+| Student enrolls | the course owner |
+| Quiz submitted | the course owner |
+| Quiz graded | the student who sat it |
+| Course published | everyone enrolled |
+| Lesson added | everyone enrolled on a published course |
+| Post published | every student, on first publication only |
+| Role changed | the user whose role changed |
+
+Three rules are enforced centrally rather than at each call site: nobody is ever notified
+about their own action, recipients are deduplicated so a fan-out cannot double-send, and a
+failed write is swallowed so a notification can never roll back the enrollment or comment
+that caused it.
+
+The bell polls a count-only endpoint every 60 seconds and fetches the list only when
+opened. A socket would be the right answer for a chat product; here the events arrive
+minutes apart and a socket's reconnect, sleep and multi-tab handling costs more than it saves.
+
+---
+
+## Cover images
+
+Both upload and URL, in one control.
+
+Uploading posts the file to `/api/upload`, which attaches the session JWT server-side and
+forwards it to Strapi's upload plugin. The browser never holds the token, so this works the
+same way as every other write.
+
+The route validates before forwarding: images only, 5MB maximum. Strapi's
+`plugin::upload.content-api.upload` permission is granted to admin, content manager and
+instructor, and to nobody else. `destroy` is deliberately not granted, since deleting an
+upload by id would let one author remove another's cover.
+
+`next.config.ts` derives its `remotePatterns` entry from `STRAPI_URL` rather than
+hard-coding a host, so uploaded covers resolve on Railway as well as locally.
+
+A URL can still be pasted, because the seeded content references images that way and an
+editor holding a link should not have to download it first.
+
+**Stored URLs are validated at every render site** by `isRenderableImage`. `next/image`
+throws on a src it cannot parse, and a throw in a Server Component takes down the whole
+route: a single post whose cover field contained the word "no" took the entire blog index
+offline for every visitor until this guard was added.
 
 ---
 

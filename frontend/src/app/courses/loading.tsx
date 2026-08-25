@@ -14,14 +14,14 @@ export default function CoursesLoading() {
 
         <div className="flex gap-2">
           {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-11 w-24 rounded-pill" />
+            <Skeleton key={index} className="h-11 w-24 rounded-control" />
           ))}
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
             <div key={index} className="overflow-hidden rounded-card border border-line bg-surface-raised">
-              <Skeleton className="aspect-[16/9] w-full rounded-none" />
+              <Skeleton className="aspect-[16/10] w-full rounded-none" />
               <div className="flex flex-col gap-3 p-5">
                 <Skeleton className="h-5 w-3/4" />
                 <Skeleton className="h-4 w-full" />

@@ -5,6 +5,7 @@ import {
   isStudent,
   type AuthUser,
 } from '../../../utils/permissions';
+import { findEnrolledStudentIds, notifyMany } from '../../../utils/notify';
 import {
   findCourseByAnyId,
   findCourseByLessonDocumentId,
@@ -111,7 +112,23 @@ export default factories.createCoreController('api::lesson.lesson', ({ strapi })
       return ctx.forbidden('You cannot add lessons to this course');
     }
 
-    return super.create(ctx);
+    const response = await super.create(ctx);
+
+    // Only worth announcing on a published course: nobody is enrolled in a draft, and a
+    // course still being written would spam its students with every lesson added.
+    if (course.isPublished) {
+      const studentIds = await findEnrolledStudentIds(strapi, course.id);
+
+      await notifyMany(strapi, studentIds, {
+        actorId: user.id,
+        type: 'lesson-added',
+        title: `New lesson in ${course.title}`,
+        body: String((data as { title?: string }).title ?? '').slice(0, 120),
+        href: `/learn/${course.slug}`,
+      });
+    }
+
+    return response;
   },
 
   /**

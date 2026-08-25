@@ -612,8 +612,8 @@ async function main() {
    * could create and edit lessons but could not list them. Asserting the status alone is
    * not enough, so the counts are compared as well.
    */
-  const instructorLessons = await call(instructor.jwt, 'GET', '/api/lessons?pagination[pageSize]=100');
-  const managerLessons = await call(cm.jwt, 'GET', '/api/lessons?pagination[pageSize]=100');
+  const instructorLessons = await call(instructor.jwt, 'GET', '/api/lessons?pagination[pageSize]=1');
+  const managerLessons = await call(cm.jwt, 'GET', '/api/lessons?pagination[pageSize]=1');
 
   expectTrue(
     'instructor',
@@ -622,12 +622,23 @@ async function main() {
     `status ${instructorLessons.status}`
   );
 
+  /**
+   * Compared on `meta.pagination.total`, not on how many rows came back.
+   *
+   * This assertion previously counted `data.length` with a page size of 100. That worked
+   * while the database held a handful of lessons and broke the moment the catalog seed
+   * pushed both totals past 100 — every request returned exactly 100 rows, so a genuinely
+   * scoped list looked identical to an unscoped one. The scoping was never wrong; the test
+   * was measuring the page size. The total is what the assertion always meant.
+   */
+  const instructorTotal = instructorLessons.json?.meta?.pagination?.total ?? 0;
+  const managerTotal = managerLessons.json?.meta?.pagination?.total ?? 0;
+
   expectTrue(
     'instructor',
     'lesson list is scoped to their own courses',
-    (instructorLessons.json?.data?.length ?? 0) > 0 &&
-      (instructorLessons.json?.data?.length ?? 0) < (managerLessons.json?.data?.length ?? 0),
-    `instructor ${instructorLessons.json?.data?.length}, content manager ${managerLessons.json?.data?.length}`
+    instructorTotal > 0 && instructorTotal < managerTotal,
+    `instructor ${instructorTotal}, content manager ${managerTotal}`
   );
 
   /**
@@ -641,12 +652,15 @@ async function main() {
     `/api/lessons?filters[course][documentId][$eq]=${jsCourse.documentId}`
   );
 
+  // Against the instructor's total from above rather than a page of rows, for the same
+  // reason: the comparison is "fewer than everything I own", which is a total.
+  const scopedTotal = scopedLessons.json?.meta?.pagination?.total ?? 0;
+
   expectTrue(
     'instructor',
     'a course filter is respected, not replaced by the ownership scope',
-    (scopedLessons.json?.data ?? []).length > 0 &&
-      (scopedLessons.json?.data ?? []).length < (instructorLessons.json?.data?.length ?? 0),
-    `${scopedLessons.json?.data?.length} for the course vs ${instructorLessons.json?.data?.length} in total`
+    scopedTotal > 0 && scopedTotal < instructorTotal,
+    `${scopedTotal} for the course vs ${instructorTotal} in total`
   );
 
   const foreignLessons = await call(

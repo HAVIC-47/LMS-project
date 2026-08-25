@@ -16,6 +16,8 @@ export type ResolvedCourse = {
   id: number;
   documentId: string;
   title: string;
+  /** Needed by notification links, which point at the public course URL. */
+  slug: string;
   isPublished: boolean;
   owner?: { id: number } | null;
 };

@@ -41,7 +41,8 @@ with sync_playwright() as p:
     # ---------- public pages ----------
     page.goto(BASE, wait_until="networkidle")
     check("landing renders hero", "Learn the parts" in page.inner_text("main") and "that stick" in page.inner_text("main"))
-    check("landing shows seeded course", "Modern JavaScript" in page.content())
+    # The landing features the three newest courses, so it names no particular one.
+    check("landing shows course cards", page.locator('a[href^="/courses/"]').count() >= 3)
     check("brand is Kiln", "Kiln" in page.title(), page.title())
     page.screenshot(path=f"{SHOTS}/01-landing.png", full_page=True)
 
@@ -51,8 +52,19 @@ with sync_playwright() as p:
     check("unpublished course hidden", "Advanced TypeScript" not in page.content())
     page.screenshot(path=f"{SHOTS}/02-courses.png", full_page=True)
 
+    # Asserted on what the filter returns rather than on the empty state. The original
+    # check looked for "No advanced courses yet", which only held while the catalog
+    # happened to contain no advanced course — it passed for the wrong reason and would
+    # have kept passing if the filter silently returned nothing at all.
     page.goto(f"{BASE}/courses?level=advanced", wait_until="networkidle")
-    check("level filter works", "No advanced courses yet" in page.content())
+    # Read from the cards, not from `main` — the filter tab bar itself contains the word
+    # "Intermediate", so a page-wide text search can never come back clean.
+    card_texts = [t.lower() for t in page.locator('a[href^="/courses/"]').all_inner_texts()]
+    check(
+        "level filter returns only advanced courses",
+        len(card_texts) > 0 and all("advanced" in t for t in card_texts),
+        f"{len(card_texts)} cards",
+    )
 
     page.goto(f"{BASE}/courses/modern-javascript-foundations", wait_until="networkidle")
     body = page.content()
@@ -132,7 +144,10 @@ with sync_playwright() as p:
     theme = page.evaluate("() => document.documentElement.getAttribute('data-theme')")
     check("dark theme applies", theme == "dark", f"data-theme={theme}")
     bg = page.evaluate("() => getComputedStyle(document.body).backgroundColor")
-    check("dark background painted", bg in ("rgb(9, 9, 11)",), bg)
+    # The ink-and-paper redesign moved the dark ground from #09090b to #12140f.
+    # Gallery monochrome moved the dark ground to #0e0e10.
+    # #000000, the supplied black.
+    check("dark background painted", bg == "rgb(0, 0, 0)", bg)
     page.screenshot(path=f"{SHOTS}/08-landing-dark.png", full_page=True)
 
     mob = ctx.new_page()

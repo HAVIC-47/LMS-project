@@ -174,7 +174,7 @@ export function LessonEditor({
                   type="button"
                   onClick={() => startEdit(lesson)}
                   aria-label={`Edit ${lesson.title}`}
-                  className="flex size-11 cursor-pointer items-center justify-center rounded-pill text-text-muted transition-colors hover:bg-shell hover:text-text"
+                  className="flex size-11 cursor-pointer items-center justify-center rounded-control text-text-muted transition-colors hover:bg-shell hover:text-text"
                 >
                   <PencilSimpleIcon size={16} aria-hidden />
                 </button>
@@ -183,7 +183,7 @@ export function LessonEditor({
                   onClick={() => remove(lesson)}
                   disabled={busyId === lesson.documentId}
                   aria-label={`Delete ${lesson.title}`}
-                  className="flex size-11 cursor-pointer items-center justify-center rounded-pill text-text-muted transition-colors hover:bg-danger-soft hover:text-danger disabled:opacity-50"
+                  className="flex size-11 cursor-pointer items-center justify-center rounded-control text-text-muted transition-colors hover:bg-danger-soft hover:text-danger disabled:opacity-50"
                 >
                   <TrashIcon size={16} aria-hidden />
                 </button>

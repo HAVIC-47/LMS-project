@@ -13,11 +13,11 @@ export function Container({
 }
 
 /**
- * A raised surface.
+ * A bounded surface.
  *
- * On a dark interface panels separate by value and a hairline, plus a one-pixel lit top
- * edge, rather than by drop shadow. Shadows on near-black are invisible; the highlight is
- * what reads as "this sits above the page".
+ * On paper a panel is defined by its rule, not by elevation. There is no shadow and no
+ * inset highlight: an editorial page separates blocks with hairlines and margin, and a
+ * floating card would read as a widget dropped onto the page.
  */
 export function Panel({
   className,
@@ -29,7 +29,7 @@ export function Panel({
   as?: 'div' | 'article' | 'section' | 'aside';
 }) {
   return (
-    <Tag className={cn('lit rounded-card border border-line bg-surface-raised', className)}>
+    <Tag className={cn('rounded-card border border-line bg-surface-raised', className)}>
       {children}
     </Tag>
   );
@@ -58,7 +58,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-pill border px-2.5 py-1 text-xs font-medium',
+        'inline-flex items-center gap-1.5 rounded-control border px-2.5 py-1 text-xs font-medium',
         tones[tone],
         className
       )}
@@ -105,7 +105,7 @@ export function SectionHeading({
     <div
       className={cn('flex flex-col gap-4', align === 'center' && 'items-center text-center', className)}
     >
-      <Heading className="display-tight max-w-[18ch] text-3xl font-semibold sm:text-4xl lg:text-[2.75rem]">
+      <Heading className="display-tight max-w-[20ch] font-serif text-[2rem] font-normal sm:text-[2.5rem] lg:text-[3rem]">
         {title}
       </Heading>
       {lede ? <p className="max-w-[56ch] text-lg text-text-muted">{lede}</p> : null}
@@ -148,11 +148,11 @@ export function ProgressRail({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={label ?? 'Progress'}
-        className={cn('w-full overflow-hidden rounded-pill bg-line', size === 'sm' ? 'h-1' : 'h-1.5')}
+        className={cn('w-full overflow-hidden rounded-control bg-line', size === 'sm' ? 'h-1' : 'h-1.5')}
       >
         <div
           className={cn(
-            'h-full rounded-pill transition-[width] duration-700 [transition-timing-function:var(--ease-settle)]',
+            'h-full rounded-control transition-[width] duration-700 [transition-timing-function:var(--ease-settle)]',
             complete ? 'bg-success' : 'bg-accent'
           )}
           style={{ width: `${clamped}%` }}

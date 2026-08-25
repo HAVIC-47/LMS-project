@@ -20,11 +20,26 @@ import { ROLES, type RoleType, type SessionUser } from './types';
 
 const SEVEN_DAYS_IN_SECONDS = 60 * 60 * 24 * 7;
 
+/**
+ * Whether to mark the session cookie `Secure`.
+ *
+ * A `Secure` cookie is refused by the browser over plain HTTP, so this cannot simply be
+ * `NODE_ENV === 'production'`: running a production build on http://localhost would set a
+ * cookie the browser silently drops, and login would appear to do nothing at all.
+ *
+ * Production defaults to on, because Vercel is always HTTPS. `SECURE_COOKIES=false` turns
+ * it off for a local production run. It is an explicit opt-out rather than a guess at the
+ * hostname, so a real deployment cannot end up insecure by accident.
+ */
+export const useSecureCookies =
+  process.env.SECURE_COOKIES !== undefined
+    ? process.env.SECURE_COOKIES === 'true'
+    : process.env.NODE_ENV === 'production';
+
 export const sessionCookieOptions = {
   httpOnly: true,
   sameSite: 'lax' as const,
-  // Secure cookies require HTTPS, which localhost is not. Vercel always is.
-  secure: process.env.NODE_ENV === 'production',
+  secure: useSecureCookies,
   path: '/',
   maxAge: SEVEN_DAYS_IN_SECONDS,
 };

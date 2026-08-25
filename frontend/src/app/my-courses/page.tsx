@@ -8,7 +8,7 @@ import { getMyEnrollments } from '@/lib/api/student';
 import { getMyAttempts } from '@/lib/api/learn';
 import { requireRole } from '@/lib/guards';
 import { ROLES } from '@/lib/types';
-import { formatDate } from '@/lib/format';
+import { formatDate, isRenderableImage } from '@/lib/format';
 
 export const metadata: Metadata = {
   title: 'My courses',
@@ -66,9 +66,9 @@ export default async function MyCoursesPage() {
               <Link
                 key={enrollment.documentId}
                 href={`/learn/${enrollment.course.slug}`}
-                className="lit group flex cursor-pointer flex-col overflow-hidden rounded-card border border-line bg-surface-raised transition-[border-color,transform] duration-300 [transition-timing-function:var(--ease-settle)] hover:-translate-y-0.5 hover:border-line-strong"
+                className="group flex cursor-pointer flex-col overflow-hidden rounded-card border border-line bg-surface-raised transition-[border-color,transform] duration-300 [transition-timing-function:var(--ease-settle)] hover:-translate-y-0.5 hover:border-line-strong"
               >
-                {enrollment.course.coverImageUrl ? (
+                {isRenderableImage(enrollment.course.coverImageUrl) ? (
                   <div className="relative aspect-[16/9] bg-shell">
                     <Image
                       src={enrollment.course.coverImageUrl}

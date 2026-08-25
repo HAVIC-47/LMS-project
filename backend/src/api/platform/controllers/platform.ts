@@ -1,6 +1,7 @@
 import type { Context } from 'koa';
 import type { Core } from '@strapi/strapi';
 import { ROLES, type AuthUser, type RoleType } from '../../../utils/permissions';
+import { notify } from '../../../utils/notify';
 
 /**
  * Admin-panel endpoints.
@@ -201,6 +202,15 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     strapi.log.info(
       `[platform] ${actor.email} changed role of ${target.email}: ${target.role?.type ?? 'none'} -> ${requestedRole}`
     );
+
+    await notify(strapi, {
+      recipientId: target.id,
+      actorId: actor.id,
+      type: 'role-changed',
+      title: `Your role is now ${nextRole.name}`,
+      body: 'What you can do on the platform has changed.',
+      href: '/dashboard',
+    });
 
     return {
       data: {

@@ -1,6 +1,7 @@
 import type { Core } from '@strapi/strapi';
 import { factories } from '@strapi/strapi';
 import { canManageBlogPost, isAdmin, isContentManager, type AuthUser } from '../../../utils/permissions';
+import { excerpt, notifyMany } from '../../../utils/notify';
 import { linkUserRelation } from '../../../utils/resolve';
 
 const canSeeDrafts = (user?: AuthUser) => isAdmin(user) || isContentManager(user);
@@ -135,6 +136,15 @@ export default factories.createCoreController('api::blog-post.blog-post', ({ str
       return ctx.forbidden('You can only delete your own posts');
     }
 
+    // Comments and likes reference the post by documentId rather than by relation, so
+    // there is no database cascade. Without this they would outlive the post they belong to.
+    await strapi.db
+      .query('api::comment.comment')
+      .deleteMany({ where: { postDocumentId: ctx.params.id } });
+    await strapi.db
+      .query('api::post-like.post-like')
+      .deleteMany({ where: { postDocumentId: ctx.params.id } });
+
     return super.delete(ctx);
   },
 
@@ -263,6 +273,27 @@ async function setPublishState(
 
   if (shouldPublish) {
     await documents.publish({ documentId });
+
+    // Announce a first publication only. Re-publishing after an edit must not notify
+    // everybody again, so this fires on the transition rather than on every publish call.
+    if (!post.publishedAt) {
+      const students = await strapi.db.query('plugin::users-permissions.user').findMany({
+        where: { role: { type: 'student' } },
+        select: ['id'],
+      });
+
+      await notifyMany(
+        strapi,
+        (students as { id: number }[]).map((student) => student.id),
+        {
+          actorId: user.id,
+          type: 'post-published',
+          title: `New post: ${post.title}`,
+          body: excerpt(post.excerpt),
+          href: `/blog/${post.slug}`,
+        }
+      );
+    }
   } else {
     await documents.unpublish({ documentId });
   }

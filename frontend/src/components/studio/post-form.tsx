@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Field, FormError } from '@/components/ui/field';
 import { TextArea } from './form-controls';
+import { ImageField } from './image-field';
 import { createEntry, deleteEntry, setPostPublished, updateEntry } from '@/lib/manage';
 
 const slugify = (value: string) =>
@@ -168,10 +169,11 @@ export function PostForm({ initial }: { initial?: PostDraft }) {
         hint="Shown on the blog index under the title."
       />
 
-      <Field
-        label="Cover image URL"
+      <ImageField
+        label="Cover image"
         value={draft.coverImageUrl}
-        onChange={(event) => set('coverImageUrl', event.target.value)}
+        onChange={(url) => set('coverImageUrl', url)}
+        hint="Shown at the top of the post and on the blog index."
       />
 
       <TextArea

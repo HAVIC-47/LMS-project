@@ -10,6 +10,7 @@ import {
 } from '../../../utils/resolve';
 import { toStudentQuiz } from '../../../utils/sanitize';
 import { gradeAttempt, type SubmittedAnswer } from '../../../utils/grading';
+import { notify } from '../../../utils/notify';
 
 export default factories.createCoreController('api::quiz.quiz', ({ strapi }) => ({
   /**
@@ -184,6 +185,27 @@ export default factories.createCoreController('api::quiz.quiz', ({ strapi }) => 
         passed: result.passed,
         submittedAt: new Date().toISOString(),
       },
+    });
+
+    const courseRow = await strapi.db.query('api::course.course').findOne({
+      where: { id: quiz.course.id },
+      populate: { owner: true },
+    });
+
+    await notify(strapi, {
+      recipientId: user.id,
+      type: 'quiz-result',
+      title: `You scored ${result.score}% on ${quiz.title}`,
+      body: result.passed ? 'Passed.' : `Pass mark is ${quiz.passingScore}%.`,
+      href: `/learn/${courseRow?.slug ?? ''}/quiz`,
+    });
+
+    await notify(strapi, {
+      recipientId: courseRow?.owner?.id,
+      actorId: user.id,
+      type: 'quiz-submitted',
+      title: `${user.username} scored ${result.score}% on ${quiz.title}`,
+      href: `/studio`,
     });
 
     return {
