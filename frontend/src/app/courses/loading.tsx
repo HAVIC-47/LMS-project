@@ -10,7 +10,7 @@ export default function CoursesLoading() {
   return (
     <div className="py-16 lg:py-20">
       <Container className="flex flex-col gap-12">
-        <SectionHeading title="Courses" />
+        <SectionHeading as="h1" title="Courses" />
 
         <div className="flex gap-2">
           {Array.from({ length: 4 }).map((_, index) => (
@@ -20,15 +20,13 @@ export default function CoursesLoading() {
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="enclosure">
-              <div className="enclosure-core flex flex-col gap-4 p-1">
-                <Skeleton className="aspect-[16/10] w-full rounded-card" />
-                <div className="flex flex-col gap-3 p-4 pt-0">
-                  <Skeleton className="h-6 w-20 rounded-pill" />
-                  <Skeleton className="h-5 w-3/4" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-2/3" />
-                </div>
+            <div key={index} className="overflow-hidden rounded-card border border-line bg-surface-raised">
+              <Skeleton className="aspect-[16/9] w-full rounded-none" />
+              <div className="flex flex-col gap-3 p-5">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="mt-2 h-4 w-24" />
               </div>
             </div>
           ))}

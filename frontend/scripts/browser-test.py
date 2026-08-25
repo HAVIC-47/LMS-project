@@ -40,7 +40,7 @@ with sync_playwright() as p:
 
     # ---------- public pages ----------
     page.goto(BASE, wait_until="networkidle")
-    check("landing renders hero", "Learn the parts that stick" in page.content())
+    check("landing renders hero", "Learn the parts" in page.inner_text("main") and "that stick" in page.inner_text("main"))
     check("landing shows seeded course", "Modern JavaScript" in page.content())
     check("brand is Kiln", "Kiln" in page.title(), page.title())
     page.screenshot(path=f"{SHOTS}/01-landing.png", full_page=True)

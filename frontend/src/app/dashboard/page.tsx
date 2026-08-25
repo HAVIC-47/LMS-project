@@ -76,13 +76,18 @@ async function StudentView() {
 
   return (
     <section className="flex flex-col gap-6">
-      <h2 className="text-xl font-semibold">Your courses</h2>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="text-xl font-semibold">Your courses</h2>
+        <Link href="/my-courses" className="text-sm font-medium text-accent-text">
+          All of them
+        </Link>
+      </div>
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {enrollments.map((enrollment) => (
           <Link
             key={enrollment.documentId}
-            href={`/courses/${enrollment.course.slug}`}
+            href={`/learn/${enrollment.course.slug}`}
             className="group flex cursor-pointer flex-col gap-4 rounded-card border border-line bg-surface p-5 transition-[border-color,transform] duration-500 [transition-timing-function:var(--ease-settle)] hover:-translate-y-0.5 hover:border-line-strong"
           >
             {enrollment.course.coverImageUrl ? (
@@ -99,7 +104,7 @@ async function StudentView() {
 
             <div className="flex flex-col gap-2">
               <LevelBadge level={enrollment.course.level} />
-              <h3 className="font-semibold text-text transition-colors group-hover:text-accent">
+              <h3 className="font-semibold text-text transition-colors group-hover:text-accent-text">
                 {enrollment.course.title}
               </h3>
             </div>
@@ -143,7 +148,7 @@ async function StaffView() {
               <div className="flex flex-wrap items-center gap-2">
                 <Link
                   href={`/courses/${course.slug}`}
-                  className="font-medium text-text transition-colors hover:text-accent"
+                  className="font-medium text-text transition-colors hover:text-accent-text"
                 >
                   {course.title}
                 </Link>

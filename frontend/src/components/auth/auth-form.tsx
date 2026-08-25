@@ -151,7 +151,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         {isSignup ? 'Already have an account? ' : 'New here? '}
         <Link
           href={isSignup ? `/login${requestedNext ? `?next=${encodeURIComponent(next)}` : ''}` : `/signup${requestedNext ? `?next=${encodeURIComponent(next)}` : ''}`}
-          className="font-medium text-accent"
+          className="font-medium text-accent-text"
         >
           {isSignup ? 'Log in' : 'Create one'}
         </Link>

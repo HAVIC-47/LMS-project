@@ -1,13 +1,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import {
-  ArrowRightIcon,
-  CheckCircleIcon,
-  ListChecksIcon,
-  SealCheckIcon,
-} from '@phosphor-icons/react/dist/ssr';
+import { ArrowRightIcon, CheckIcon } from '@phosphor-icons/react/dist/ssr';
 import { ButtonLink } from '@/components/ui/button';
-import { Container, Enclosure, ProgressRail, SectionHeading } from '@/components/ui/primitives';
+import { Container, Panel, ProgressRail, SectionHeading, Stat } from '@/components/ui/primitives';
 import { Reveal } from '@/components/ui/reveal';
 import { CourseCard } from '@/components/marketing/course-card';
 import { getPublishedCourses, getPublishedPosts, summariseCatalog } from '@/lib/api/public';
@@ -15,14 +10,15 @@ import { getPublishedCourses, getPublishedPosts, summariseCatalog } from '@/lib/
 /**
  * Landing page.
  *
- * Layout families used, one each, so no two sections share a shape:
- *   1. asymmetric split hero (7/5 grid)
- *   2. horizontal stat row on a hairline
- *   3. asymmetric bento, exactly 3 cells for 3 features
+ * One layout family per section, so no two read the same way:
+ *   1. hero, asymmetric 7/5 with a live product panel
+ *   2. measured rule: stats sitting in a hairline grid
+ *   3. numbered steps in a three-column rule grid
  *   4. course grid
- *   5. full-width quote
- *   6. two-column writing list
- *   7. centred closing call to action
+ *   5. full-bleed image band with an overlaid claim
+ *   6. quote
+ *   7. writing list
+ *   8. closing panel
  */
 export default async function HomePage() {
   const [courses, posts] = await Promise.all([getPublishedCourses(), getPublishedPosts()]);
@@ -33,43 +29,45 @@ export default async function HomePage() {
   return (
     <>
       <Hero />
-      <Stats {...stats} />
+      <Measures {...stats} />
       <HowItWorks />
       <FeaturedCourses courses={featured} hasMore={courses.length > featured.length} />
-      <Testimonial />
-      {latestPosts.length > 0 ? <LatestWriting posts={latestPosts} /> : null}
-      <ClosingCta />
+      <ImageBand />
+      <Quote />
+      {latestPosts.length > 0 ? <Writing posts={latestPosts} /> : null}
+      <Closing />
     </>
   );
 }
 
 /**
- * Asymmetric split hero: copy on the left, a real product surface on the right.
+ * Four text elements, which is the cap: headline, subtext, two buttons. No trust strip,
+ * no tagline under the buttons, no scroll cue.
  *
- * The right panel is a live render of the progress rail component this app actually uses,
- * not a drawing of one. Four text elements total, which is the cap: headline, subtext,
- * two buttons. No trust strip, no tagline under the CTAs, no scroll cue.
+ * The right-hand panel renders the same `ProgressRail` the app actually uses, on real
+ * copy from the seeded course. It is a product surface, not a drawing of one.
  */
 function Hero() {
   return (
-    <section className="relative overflow-hidden pb-20 pt-16 sm:pt-20 lg:pb-28 lg:pt-24">
-      {/* A single soft wash behind the hero. Fixed and non-interactive so it never
-          intercepts a click or forces a repaint while scrolling. */}
+    <section className="relative overflow-hidden border-b border-line pb-20 pt-14 sm:pt-20 lg:pb-28">
+      {/* One soft wash, low opacity, non-interactive. No glow, no mesh gradient. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[600px] opacity-60 [background:radial-gradient(60%_50%_at_15%_0%,var(--accent-soft),transparent_70%)]"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[540px] opacity-[0.55] [background:radial-gradient(52%_44%_at_18%_0%,var(--accent-soft),transparent_72%)]"
       />
 
       <Container>
-        <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-16">
+        <div className="grid items-center gap-14 lg:grid-cols-12 lg:gap-12">
           <div className="flex flex-col gap-7 lg:col-span-7">
-            <h1 className="display-tight text-4xl font-semibold sm:text-5xl lg:text-6xl">
-              Learn the parts that stick.
+            <h1 className="display-tight text-[2.75rem] font-semibold sm:text-6xl lg:text-7xl">
+              Learn the parts
+              <br />
+              that stick.
             </h1>
 
-            <p className="max-w-[46ch] text-lg leading-relaxed text-text-muted">
-              Short courses with real lessons. Your progress reflects what you actually finished,
-              and every quiz marks itself the moment you submit.
+            <p className="max-w-[44ch] text-lg leading-relaxed text-text-muted">
+              Short courses with real lessons. Progress counts what you finished, and every quiz
+              marks itself the moment you submit.
             </p>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -103,45 +101,39 @@ function HeroPanel() {
   ];
 
   return (
-    <Enclosure>
-      <div className="flex flex-col gap-5 p-6">
-        <div className="flex flex-col gap-1">
-          <p className="text-sm text-text-subtle">Modern JavaScript Foundations</p>
-          <ProgressRail value={40} label="Your progress" />
-        </div>
-
-        <ul className="flex flex-col gap-1">
-          {lessons.map((lesson) => (
-            <li
-              key={lesson.title}
-              className="flex items-center gap-3 rounded-input px-2 py-2.5 text-sm"
-            >
-              {lesson.done ? (
-                <CheckCircleIcon size={18} weight="fill" className="shrink-0 text-success" aria-hidden />
-              ) : (
-                <span
-                  aria-hidden
-                  className="size-[18px] shrink-0 rounded-pill border border-line-strong"
-                />
-              )}
-              <span className={lesson.done ? 'text-text-subtle line-through' : 'text-text'}>
-                {lesson.title}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        <p className="border-t border-line pt-4 text-sm text-text-muted">
-          <span className="font-mono tabular-nums text-text">2</span> of{' '}
-          <span className="font-mono tabular-nums text-text">5</span> lessons done
-        </p>
+    <Panel className="overflow-hidden">
+      <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4">
+        <p className="truncate text-sm font-medium text-text">Modern JavaScript Foundations</p>
+        <span className="microlabel shrink-0">2 / 5</span>
       </div>
-    </Enclosure>
+
+      <div className="px-5 py-4">
+        <ProgressRail value={40} size="sm" />
+      </div>
+
+      <ul className="flex flex-col px-2 pb-3">
+        {lessons.map((lesson) => (
+          <li key={lesson.title} className="flex items-center gap-3 rounded-input px-3 py-2.5 text-sm">
+            <span
+              aria-hidden
+              className={
+                lesson.done
+                  ? 'flex size-4 shrink-0 items-center justify-center rounded-pill bg-accent text-accent-ink-on'
+                  : 'size-4 shrink-0 rounded-pill border border-line-strong'
+              }
+            >
+              {lesson.done ? <CheckIcon size={10} weight="bold" /> : null}
+            </span>
+            <span className={lesson.done ? 'text-text-subtle' : 'text-text'}>{lesson.title}</span>
+          </li>
+        ))}
+      </ul>
+    </Panel>
   );
 }
 
-/** Numbers on a hairline. No cards: three figures do not need three boxes. */
-function Stats({
+/** Figures in a hairline grid. Three numbers do not need three boxes. */
+function Measures({
   courseCount,
   lessonCount,
   instructorCount,
@@ -151,20 +143,24 @@ function Stats({
   instructorCount: number;
 }) {
   const entries = [
-    { value: courseCount, label: courseCount === 1 ? 'course' : 'courses' },
-    { value: lessonCount, label: lessonCount === 1 ? 'lesson' : 'lessons' },
-    { value: instructorCount, label: instructorCount === 1 ? 'instructor' : 'instructors' },
+    { value: String(courseCount).padStart(2, '0'), label: courseCount === 1 ? 'course' : 'courses' },
+    { value: String(lessonCount).padStart(2, '0'), label: lessonCount === 1 ? 'lesson' : 'lessons' },
+    {
+      value: String(instructorCount).padStart(2, '0'),
+      label: instructorCount === 1 ? 'instructor' : 'instructors',
+    },
   ];
 
   return (
-    <section className="border-y border-line bg-surface">
+    <section className="border-b border-line">
       <Container>
         <dl className="grid grid-cols-3 divide-x divide-line">
           {entries.map((entry) => (
-            <div key={entry.label} className="flex flex-col gap-1 py-8 pl-4 first:pl-0 sm:pl-8">
+            <div key={entry.label} className="py-10 pl-5 first:pl-0 sm:pl-10">
               <dt className="sr-only">{entry.label}</dt>
-              <dd className="font-mono text-3xl tabular-nums text-text sm:text-4xl">{entry.value}</dd>
-              <p className="text-sm text-text-muted">{entry.label}</p>
+              <dd>
+                <Stat value={entry.value} label={entry.label} />
+              </dd>
             </div>
           ))}
         </dl>
@@ -174,89 +170,80 @@ function Stats({
 }
 
 /**
- * Asymmetric bento: three features, exactly three cells, no filler tile. The wide cell
- * carries an image so the grid is not three text boxes in a row.
+ * Three steps in a rule grid, numbered in mono.
+ *
+ * The numbers are the label, so there is no uppercase eyebrow above each one and no
+ * "Stage 1 / Stage 2" prefix in the headings.
  */
 function HowItWorks() {
+  const steps = [
+    {
+      n: '01',
+      title: 'Enroll',
+      body: 'Pick a course from the catalog. Lessons unlock in the order the instructor set them.',
+    },
+    {
+      n: '02',
+      title: 'Work through it',
+      body: 'Read or watch, then mark the lesson done. The percentage is recomputed on the server from the lessons you actually finished.',
+    },
+    {
+      n: '03',
+      title: 'Sit the quiz',
+      body: 'Answers are graded the moment you submit. Your score is stored and you can read it back at any time.',
+    },
+  ];
+
   return (
-    <section className="py-24 lg:py-32">
-      <Container className="flex flex-col gap-12">
+    <section className="border-b border-line py-24 lg:py-28">
+      <Container className="flex flex-col gap-14">
         <Reveal>
           <SectionHeading
             title="Built around finishing, not starting."
-            lede="Most courses measure signups. These measure the lesson you just closed and the quiz you just sat."
+            lede="Most platforms measure signups. This one measures the lesson you just closed."
           />
         </Reveal>
 
-        <div className="grid gap-4 md:grid-cols-6 md:grid-rows-2">
-          <Reveal className="md:col-span-4 md:row-span-2">
-            <article className="relative flex h-full min-h-[320px] flex-col justify-end overflow-hidden rounded-card border border-line p-8">
-              <Image
-                src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1400&q=80"
-                alt=""
-                fill
-                sizes="(max-width: 768px) 100vw, 60vw"
-                className="object-cover"
-              />
-              <div
-                aria-hidden
-                className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/40 to-transparent"
-              />
-              <div className="relative flex flex-col gap-2 text-zinc-50">
-                <h3 className="text-2xl font-semibold">Progress that is actually yours</h3>
-                <p className="max-w-[42ch] text-sm leading-relaxed text-zinc-200">
-                  Mark a lesson complete and the percentage is recomputed on the server from the
-                  lessons you finished. Close the tab, come back next week, it is still right.
-                </p>
+        <div className="grid gap-px overflow-hidden rounded-card border border-line bg-line md:grid-cols-3">
+          {steps.map((step, index) => (
+            <Reveal key={step.n} delay={index * 0.07}>
+              <div className="flex h-full flex-col gap-4 bg-page p-7">
+                <span className="font-mono text-sm tabular-nums text-accent-text">{step.n}</span>
+                <h3 className="text-xl font-semibold text-text">{step.title}</h3>
+                <p className="text-sm leading-relaxed text-text-muted">{step.body}</p>
               </div>
-            </article>
-          </Reveal>
-
-          <Reveal delay={0.08} className="md:col-span-2">
-            <article className="flex h-full flex-col gap-3 rounded-card border border-line bg-accent-soft p-6">
-              <ListChecksIcon size={22} className="text-accent" aria-hidden />
-              <h3 className="text-lg font-semibold text-text">Quizzes mark themselves</h3>
-              <p className="text-sm leading-relaxed text-text-muted">
-                Answers are graded on the server the moment you submit. Your score is stored and
-                you can read it back later.
-              </p>
-            </article>
-          </Reveal>
-
-          <Reveal delay={0.16} className="md:col-span-2">
-            <article className="flex h-full flex-col gap-3 rounded-card border border-line bg-surface p-6">
-              <SealCheckIcon size={22} className="text-text-muted" aria-hidden />
-              <h3 className="text-lg font-semibold text-text">Sequenced lessons</h3>
-              <p className="text-sm leading-relaxed text-text-muted">
-                Lessons run in the order the instructor set, mixing written material and video
-                without changing how you move through them.
-              </p>
-            </article>
-          </Reveal>
+            </Reveal>
+          ))}
         </div>
       </Container>
     </section>
   );
 }
 
-function FeaturedCourses({ courses, hasMore }: { courses: Awaited<ReturnType<typeof getPublishedCourses>>; hasMore: boolean }) {
+function FeaturedCourses({
+  courses,
+  hasMore,
+}: {
+  courses: Awaited<ReturnType<typeof getPublishedCourses>>;
+  hasMore: boolean;
+}) {
   if (courses.length === 0) return null;
 
   return (
-    <section className="border-t border-line bg-surface py-24 lg:py-32">
+    <section className="border-b border-line py-24 lg:py-28">
       <Container className="flex flex-col gap-12">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <SectionHeading title="Start with one of these." />
           {hasMore ? (
             <Link
               href="/courses"
-              className="group flex items-center gap-2 text-sm font-medium text-accent"
+              className="group flex items-center gap-2 text-sm font-medium text-accent-text"
             >
               All courses
               <ArrowRightIcon
                 size={15}
                 aria-hidden
-                className="transition-transform duration-300 [transition-timing-function:var(--ease-settle)] group-hover:translate-x-0.5"
+                className="transition-transform duration-200 [transition-timing-function:var(--ease-settle)] group-hover:translate-x-0.5"
               />
             </Link>
           ) : null}
@@ -264,7 +251,7 @@ function FeaturedCourses({ courses, hasMore }: { courses: Awaited<ReturnType<typ
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {courses.map((course, index) => (
-            <Reveal key={course.documentId} delay={index * 0.08}>
+            <Reveal key={course.documentId} delay={index * 0.07}>
               <CourseCard course={course} priority={index === 0} />
             </Reveal>
           ))}
@@ -274,18 +261,55 @@ function FeaturedCourses({ courses, hasMore }: { courses: Awaited<ReturnType<typ
   );
 }
 
-/** Full-width quote. Three lines, real attribution with a role. */
-function Testimonial() {
+/**
+ * Full-bleed band. Breaks the container rhythm once, so the page has a moment that is not
+ * a grid of panels.
+ */
+function ImageBand() {
   return (
-    <section className="py-24 lg:py-32">
+    <section className="relative isolate flex min-h-[460px] items-end overflow-hidden border-b border-line">
+      <Image
+        src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1800&q=80"
+        alt=""
+        fill
+        sizes="100vw"
+        className="object-cover"
+      />
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/70 to-[#09090b]/10"
+      />
+
+      <Container className="relative pb-14">
+        <Reveal>
+          <div className="flex max-w-[46ch] flex-col gap-4">
+            <h2 className="display-tight text-3xl font-semibold text-zinc-50 sm:text-4xl">
+              Progress that is actually yours.
+            </h2>
+            <p className="leading-relaxed text-zinc-300">
+              Mark a lesson complete and the number is recalculated from your own records. Close
+              the tab, come back next week, it still reads the same.
+            </p>
+          </div>
+        </Reveal>
+      </Container>
+    </section>
+  );
+}
+
+function Quote() {
+  return (
+    <section className="border-b border-line py-24 lg:py-28">
       <Container>
         <Reveal>
-          <figure className="mx-auto flex max-w-3xl flex-col gap-8 text-center">
-            <blockquote className="text-2xl font-medium leading-snug text-text sm:text-3xl">
+          <figure className="mx-auto flex max-w-3xl flex-col gap-7 text-center">
+            <blockquote className="text-2xl font-medium leading-snug text-text sm:text-[1.75rem]">
               &ldquo;I stopped guessing where I&rsquo;d got to. The percentage matches the lessons I
               actually finished, which sounds obvious until you use a platform where it
               doesn&rsquo;t.&rdquo;
             </blockquote>
+            {/* A person's name is not a data label: the mono uppercase treatment used
+                elsewhere would render it as PRIYA RAGHUNATHAN. */}
             <figcaption className="text-sm text-text-muted">
               Priya Raghunathan, backend engineer at Havenlink
             </figcaption>
@@ -296,26 +320,28 @@ function Testimonial() {
   );
 }
 
-function LatestWriting({ posts }: { posts: Awaited<ReturnType<typeof getPublishedPosts>> }) {
+function Writing({ posts }: { posts: Awaited<ReturnType<typeof getPublishedPosts>> }) {
   return (
-    <section className="border-t border-line py-24 lg:py-32">
-      <Container className="grid gap-12 lg:grid-cols-12">
+    <section className="border-b border-line py-24 lg:py-28">
+      <Container className="grid gap-10 lg:grid-cols-12">
         <div className="lg:col-span-4">
           <SectionHeading title="Writing" />
         </div>
 
         <div className="flex flex-col lg:col-span-8">
           {posts.map((post, index) => (
-            <Reveal key={post.documentId} delay={index * 0.08}>
+            <Reveal key={post.documentId} delay={index * 0.07}>
               <Link
                 href={`/blog/${post.slug}`}
-                className="group flex flex-col gap-2 border-b border-line py-7 transition-colors duration-300 first:border-t hover:border-line-strong"
+                className="group flex flex-col gap-2 border-b border-line py-7 first:border-t"
               >
-                <h3 className="text-xl font-semibold text-text transition-colors duration-200 group-hover:text-accent">
+                <h3 className="text-xl font-semibold text-text transition-colors duration-200 group-hover:text-accent-text">
                   {post.title}
                 </h3>
                 {post.excerpt ? (
-                  <p className="max-w-[62ch] text-sm leading-relaxed text-text-muted">{post.excerpt}</p>
+                  <p className="max-w-[62ch] text-sm leading-relaxed text-text-muted">
+                    {post.excerpt}
+                  </p>
                 ) : null}
               </Link>
             </Reveal>
@@ -326,23 +352,23 @@ function LatestWriting({ posts }: { posts: Awaited<ReturnType<typeof getPublishe
   );
 }
 
-function ClosingCta() {
+function Closing() {
   return (
-    <section className="pb-8 pt-24 lg:pt-32">
+    <section className="py-24 lg:py-28">
       <Container>
         <Reveal>
-          <div className="flex flex-col items-center gap-7 rounded-card border border-line bg-surface px-6 py-20 text-center">
-            <h2 className="display-tight max-w-[16ch] text-3xl font-semibold sm:text-4xl lg:text-5xl">
+          <Panel className="flex flex-col items-center gap-7 px-6 py-20 text-center">
+            <h2 className="display-tight max-w-[15ch] text-3xl font-semibold sm:text-5xl">
               Pick a course and finish it.
             </h2>
-            <p className="max-w-[48ch] text-lg text-text-muted">
-              Free to join. Enroll, work through the lessons in order, and sit the quiz when you are
-              ready.
+            <p className="max-w-[46ch] text-lg text-text-muted">
+              Free to join. Enroll, work through the lessons in order, and sit the quiz when you
+              are ready.
             </p>
             <ButtonLink href="/signup" size="lg" withArrow>
               Get started
             </ButtonLink>
-          </div>
+          </Panel>
         </Reveal>
       </Container>
     </section>

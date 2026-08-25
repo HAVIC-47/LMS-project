@@ -39,6 +39,7 @@ export default async function CoursesPage({
     <div className="py-16 lg:py-20">
       <Container className="flex flex-col gap-12">
         <SectionHeading
+          as="h1"
           title="Courses"
           lede="Everything published so far. Enroll and the lessons unlock in order."
         />
@@ -69,7 +70,7 @@ export default async function CoursesPage({
             }
             action={
               activeLevel ? (
-                <Link href="/courses" className="text-sm font-medium text-accent">
+                <Link href="/courses" className="text-sm font-medium text-accent-text">
                   Show all courses
                 </Link>
               ) : null
@@ -106,8 +107,8 @@ function FilterPill({
         // 44px tall so it stays a comfortable touch target on mobile.
         'flex h-11 cursor-pointer items-center rounded-pill border px-4 text-sm transition-colors duration-200',
         active
-          ? 'border-accent bg-accent text-accent-contrast'
-          : 'border-line-strong bg-surface-raised text-text-muted hover:border-accent hover:text-accent'
+          ? 'border-accent bg-accent text-accent-ink-on'
+          : 'border-line-strong bg-surface-raised text-text-muted hover:border-accent hover:text-accent-text'
       )}
     >
       {children}

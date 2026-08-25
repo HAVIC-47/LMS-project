@@ -1,7 +1,7 @@
 import { cn } from '@/lib/cn';
 import { LEVEL_LABELS, type CourseLevel } from '@/lib/types';
 
-/** One container width for the whole product. Mixing max-widths is what makes pages drift. */
+/** One container width for the whole product. Mixed max-widths are what make pages drift. */
 export function Container({
   className,
   children,
@@ -9,14 +9,35 @@ export function Container({
   className?: string;
   children: React.ReactNode;
 }) {
-  return <div className={cn('mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8', className)}>{children}</div>;
+  return <div className={cn('mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8', className)}>{children}</div>;
 }
 
 /**
- * Small status chip.
+ * A raised surface.
  *
- * `tone` maps to meaning, not decoration: `accent` is brand, `success` means a thing is
- * finished, `danger` means it failed. There is no "make it green because green is nice".
+ * On a dark interface panels separate by value and a hairline, plus a one-pixel lit top
+ * edge, rather than by drop shadow. Shadows on near-black are invisible; the highlight is
+ * what reads as "this sits above the page".
+ */
+export function Panel({
+  className,
+  children,
+  as: Tag = 'div',
+}: {
+  className?: string;
+  children: React.ReactNode;
+  as?: 'div' | 'article' | 'section' | 'aside';
+}) {
+  return (
+    <Tag className={cn('lit rounded-card border border-line bg-surface-raised', className)}>
+      {children}
+    </Tag>
+  );
+}
+
+/**
+ * Status chip. `tone` carries meaning, never decoration: `accent` is brand, `success`
+ * means finished, `danger` means failed.
  */
 export function Badge({
   tone = 'neutral',
@@ -28,10 +49,10 @@ export function Badge({
   children: React.ReactNode;
 }) {
   const tones = {
-    neutral: 'bg-shell text-text-muted border-line',
-    accent: 'bg-accent-soft text-accent border-accent/25',
-    success: 'bg-success-soft text-success border-success/25',
-    danger: 'bg-danger-soft text-danger border-danger/25',
+    neutral: 'border-line bg-shell text-text-muted',
+    accent: 'border-accent/30 bg-accent-soft text-accent-text',
+    success: 'border-success/30 bg-success-soft text-success',
+    danger: 'border-danger/30 bg-danger-soft text-danger',
   } as const;
 
   return (
@@ -48,59 +69,75 @@ export function Badge({
 }
 
 export function LevelBadge({ level }: { level: CourseLevel }) {
-  return <Badge tone="neutral">{LEVEL_LABELS[level]}</Badge>;
+  return (
+    <span className="microlabel border-l border-line pl-2 text-text-subtle">
+      {LEVEL_LABELS[level]}
+    </span>
+  );
 }
 
 /**
  * Section heading.
  *
- * There is no eyebrow slot by design. An uppercase micro-label above every heading is the
- * single most recognisable machine-generated rhythm, and the headline alone carries the
- * section perfectly well.
+ * No eyebrow slot. A small uppercase label above every section heading is the most
+ * recognisable machine-generated rhythm there is, and the headline carries the section on
+ * its own.
  */
 export function SectionHeading({
   title,
   lede,
   className,
   align = 'left',
+  as: Heading = 'h2',
 }: {
   title: string;
   lede?: string;
   className?: string;
   align?: 'left' | 'center';
+  /**
+   * `h2` by default because this is usually a section within a page. Pages whose title
+   * IS this heading pass `as="h1"`: a document with no h1 gives screen-reader users no
+   * anchor for what the page is.
+   */
+  as?: 'h1' | 'h2';
 }) {
   return (
-    <div className={cn('flex flex-col gap-4', align === 'center' && 'items-center text-center', className)}>
-      <h2 className="display-tight max-w-[20ch] text-3xl font-semibold sm:text-4xl lg:text-5xl">
+    <div
+      className={cn('flex flex-col gap-4', align === 'center' && 'items-center text-center', className)}
+    >
+      <Heading className="display-tight max-w-[18ch] text-3xl font-semibold sm:text-4xl lg:text-[2.75rem]">
         {title}
-      </h2>
-      {lede ? <p className="max-w-[58ch] text-lg text-text-muted">{lede}</p> : null}
+      </Heading>
+      {lede ? <p className="max-w-[56ch] text-lg text-text-muted">{lede}</p> : null}
     </div>
   );
 }
 
 /**
- * Progress bar.
+ * Progress rail.
  *
- * No filled background track behind a partial fill: the empty portion is a hairline rail,
- * so the eye reads the filled length rather than the ratio of two greys.
+ * The unfilled portion is a hairline track, not a filled grey bar: the eye should read the
+ * length of the accent, not the ratio between two greys.
  */
 export function ProgressRail({
   value,
   label,
   className,
+  size = 'md',
 }: {
   value: number;
   label?: string;
   className?: string;
+  size?: 'sm' | 'md';
 }) {
   const clamped = Math.max(0, Math.min(100, Math.round(value)));
+  const complete = clamped === 100;
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
       {label ? (
-        <div className="flex items-baseline justify-between text-sm">
-          <span className="text-text-muted">{label}</span>
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="microlabel">{label}</span>
           <span className="font-mono text-xs tabular-nums text-text">{clamped}%</span>
         </div>
       ) : null}
@@ -111,10 +148,13 @@ export function ProgressRail({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={label ?? 'Progress'}
-        className="h-1.5 w-full overflow-hidden rounded-pill bg-line"
+        className={cn('w-full overflow-hidden rounded-pill bg-line', size === 'sm' ? 'h-1' : 'h-1.5')}
       >
         <div
-          className="h-full rounded-pill bg-accent transition-[width] duration-700 [transition-timing-function:var(--ease-settle)]"
+          className={cn(
+            'h-full rounded-pill transition-[width] duration-700 [transition-timing-function:var(--ease-settle)]',
+            complete ? 'bg-success' : 'bg-accent'
+          )}
           style={{ width: `${clamped}%` }}
         />
       </div>
@@ -123,22 +163,22 @@ export function ProgressRail({
 }
 
 /**
- * Nested enclosure. Only worth reaching for where elevation means something - a course
- * card you can open, the hero panel. Everywhere else, spacing and a hairline do the job
- * with less visual noise.
+ * Figure with a mono numeral. The instrument-panel note that gives the interface its
+ * character, used for real data only.
  */
-export function Enclosure({
+export function Stat({
+  value,
+  label,
   className,
-  innerClassName,
-  children,
 }: {
+  value: string | number;
+  label: string;
   className?: string;
-  innerClassName?: string;
-  children: React.ReactNode;
 }) {
   return (
-    <div className={cn('enclosure', className)}>
-      <div className={cn('enclosure-core h-full', innerClassName)}>{children}</div>
+    <div className={cn('flex flex-col gap-1.5', className)}>
+      <span className="font-mono text-3xl tabular-nums text-text sm:text-4xl">{value}</span>
+      <span className="microlabel">{label}</span>
     </div>
   );
 }
@@ -167,7 +207,7 @@ export function EmptyState({
   );
 }
 
-/** Skeleton that matches the shape of what is loading, not a spinner in the middle. */
+/** Skeleton shaped like the thing that is loading, so nothing shifts when it arrives. */
 export function Skeleton({ className }: { className?: string }) {
   return <div className={cn('animate-pulse rounded-input bg-line', className)} />;
 }

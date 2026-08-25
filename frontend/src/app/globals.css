@@ -3,83 +3,92 @@
 /**
  * Design tokens.
  *
- * PALETTE LOCK: cool zinc neutrals + exactly one accent (burnt orange). The accent is the
- * only saturated colour used for brand and calls to action, on every page, in both themes.
- * Green and red appear only as semantic state (a lesson is complete, a field is invalid),
- * never as decoration.
+ * DARK-FIRST. The product is designed on near-black and light mode is a true inverse, not
+ * a bleached afterthought. `#09090B` rather than `#000000`: pure black kills the sense of
+ * depth because nothing can sit behind it.
  *
- * SHAPE LOCK: three radii and no others.
- *   pill   - interactive controls (buttons, chips, the nav shell)
- *   card   - containers and media
- *   input  - form fields
+ * PALETTE LOCK: neutral greys plus exactly one accent, a lime that reads as a signal
+ * rather than a decoration. Green and red appear only as state (complete, failed), never
+ * as styling.
  *
- * No pure #000 or #fff anywhere: pure values flatten depth and make shadows look grey.
+ * The accent is split in two on purpose:
+ *   --accent      a fill. Always carries --accent-ink-on text. Identical in both themes.
+ *   --accent-text the accent used AS text. Bright lime on dark, deep olive on light,
+ *                 because bright lime on a white page is unreadable at body size.
+ * Splitting them makes an unreadable pairing impossible to assemble by accident.
+ *
+ * SHAPE LOCK: three radii, no others. Controls are pills, containers are cards, fields
+ * are inputs.
+ *
+ * No glows. On a dark UI a glow is the fastest way to look like a template.
  */
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/* Light mode: a warm-neutral paper, not a grey screen. */
 :root {
-  --page: #f4f4f5;
-  --surface: #fafafa;
+  --page: #f7f7f6;
+  --surface: #fcfcfb;
   --surface-raised: #ffffff;
-  --shell: #e9e9ec;
+  --shell: #ededeb;
 
-  --text: #18181b;
-  --text-muted: #52525b;
-  --text-subtle: #71717a;
+  --text: #131316;
+  --text-muted: #55555e;
+  --text-subtle: #75757f;
 
-  --line: #e4e4e7;
-  --line-strong: #d4d4d8;
+  --line: #e3e3e0;
+  --line-strong: #cfcfcb;
 
-  /* orange-700 on the light page reads at about 5.9:1, so it is safe for body-size text. */
-  --accent: #c2410c;
-  --accent-hover: #9a3412;
-  --accent-contrast: #fffdfb;
-  --accent-soft: #fff1e9;
+  --accent: #c8f751;
+  --accent-hover: #bdec44;
+  --accent-ink-on: #10130a;
+  --accent-text: #4a6600;
+  --accent-soft: #f1fbd6;
 
-  --success: #15803d;
-  --success-soft: #ecfdf3;
-  --danger: #b91c1c;
-  --danger-soft: #fef2f2;
+  --success: #16794a;
+  --success-soft: #e7f7ef;
+  --danger: #b4231f;
+  --danger-soft: #fdf0ef;
 
-  --ring: #c2410c;
+  --ring: #4a6600;
 
   --radius-pill: 9999px;
-  --radius-card: 1rem;
-  --radius-input: 0.625rem;
+  --radius-card: 0.875rem;
+  --radius-input: 0.5rem;
 
-  --shadow-ambient: 0 1px 2px rgb(24 24 27 / 0.04), 0 12px 32px -12px rgb(24 24 27 / 0.12);
-  --shadow-lifted: 0 2px 4px rgb(24 24 27 / 0.05), 0 24px 56px -20px rgb(24 24 27 / 0.22);
+  --shadow-ambient: 0 1px 2px rgb(19 19 22 / 0.05), 0 10px 28px -14px rgb(19 19 22 / 0.16);
+  --shadow-lifted: 0 2px 4px rgb(19 19 22 / 0.06), 0 22px 48px -20px rgb(19 19 22 / 0.24);
 }
 
 [data-theme="dark"] {
   --page: #09090b;
-  --surface: #131316;
-  --surface-raised: #18181b;
-  --shell: #1c1c20;
+  --surface: #101013;
+  --surface-raised: #17171b;
+  --shell: #1e1e23;
 
-  --text: #fafafa;
-  --text-muted: #a1a1aa;
-  --text-subtle: #8b8b93;
+  --text: #f4f4f5;
+  --text-muted: #a2a2ad;
+  --text-subtle: #7e7e8a;
 
-  --line: #27272a;
-  --line-strong: #3f3f46;
+  --line: #232329;
+  --line-strong: #34343d;
 
-  /* orange-400 on near-black reads at about 8:1. The 700 used in light mode would not. */
-  --accent: #fb923c;
-  --accent-hover: #fdba74;
-  --accent-contrast: #1a0e05;
-  --accent-soft: #2a1608;
+  --accent: #c8f751;
+  --accent-hover: #d6ff6a;
+  --accent-ink-on: #10130a;
+  --accent-text: #c8f751;
+  --accent-soft: #1c2410;
 
   --success: #4ade80;
-  --success-soft: #0c2318;
+  --success-soft: #0e2419;
   --danger: #f87171;
-  --danger-soft: #2a1214;
+  --danger-soft: #2b1315;
 
-  --ring: #fb923c;
+  --ring: #c8f751;
 
-  --shadow-ambient: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -12px rgb(0 0 0 / 0.6);
-  --shadow-lifted: 0 2px 4px rgb(0 0 0 / 0.5), 0 24px 56px -20px rgb(0 0 0 / 0.7);
+  /* Dark surfaces separate by value, not by shadow, so these stay restrained. */
+  --shadow-ambient: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 28px -14px rgb(0 0 0 / 0.7);
+  --shadow-lifted: 0 2px 4px rgb(0 0 0 / 0.55), 0 22px 48px -20px rgb(0 0 0 / 0.8);
 }
 
 @theme inline {
@@ -97,7 +106,8 @@
 
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
-  --color-accent-contrast: var(--accent-contrast);
+  --color-accent-ink-on: var(--accent-ink-on);
+  --color-accent-text: var(--accent-text);
   --color-accent-soft: var(--accent-soft);
 
   --color-success: var(--success);
@@ -112,7 +122,7 @@
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
-  /* One easing curve for the whole product. Heavy start, long settle. */
+  /* One curve for the whole product: quick departure, long settle. */
   --ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -130,14 +140,13 @@
     background-color: var(--page);
     color: var(--text);
     font-family: var(--font-sans);
-    /* 16px minimum on mobile: anything smaller triggers zoom-on-focus in iOS Safari. */
+    /* 16px floor: anything smaller triggers zoom-on-focus in iOS Safari. */
     font-size: 1rem;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
 
-  /* Visible focus for keyboard users, invisible for mouse users. */
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
@@ -146,16 +155,15 @@
 
   ::selection {
     background-color: var(--accent);
-    color: var(--accent-contrast);
+    color: var(--accent-ink-on);
   }
 
   h1,
   h2,
   h3,
   h4 {
-    /* Display type is tightened; body stays at 1.6 for readability. */
-    letter-spacing: -0.02em;
-    line-height: 1.1;
+    letter-spacing: -0.025em;
+    line-height: 1.08;
     text-wrap: balance;
   }
 
@@ -163,45 +171,50 @@
     text-wrap: pretty;
   }
 
-  /* Reserve descender room: display type at leading-none clips g, y, p, j. */
+  /* Display type needs descender room; leading-none clips g, y, p, j. */
   .display-tight {
-    line-height: 1.05;
+    line-height: 1.04;
     padding-bottom: 0.08em;
   }
 }
 
 @layer utilities {
   /**
-   * Nested enclosure: an outer shell holds an inner core with a mathematically smaller
-   * radius, so the two curves stay concentric instead of looking stacked. Used only where
-   * elevation carries real meaning (course cards, the hero panel), not on every box.
+   * Mono microlabel. Used for data labels and numerals, which is what gives the interface
+   * its instrument-panel character. NOT used as a section eyebrow above every heading:
+   * that rhythm is the single most recognisable machine-generated layout tell.
    */
-  .enclosure {
-    background-color: var(--shell);
-    border: 1px solid var(--line);
-    border-radius: calc(var(--radius-card) + 0.375rem);
-    padding: 0.375rem;
+  .microlabel {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-subtle);
   }
 
-  .enclosure-core {
-    background-color: var(--surface-raised);
-    border-radius: var(--radius-card);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6);
+  /**
+   * Hairline rule used to build the structural grid. A single shared token so every
+   * divider on the site is the same weight and colour.
+   */
+  .rule {
+    border-color: var(--line);
   }
 
-  [data-theme="dark"] .enclosure-core {
+  /**
+   * Inset highlight along the top edge of a raised surface. On dark UI this is what makes
+   * a panel read as lit from above rather than as a flat lighter rectangle. Replaces the
+   * glow that this kind of interface usually reaches for.
+   */
+  .lit {
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
   }
 
-  .hairline {
-    border-color: var(--line);
+  :root .lit {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9);
   }
 }
 
-/**
- * Everything that moves is gated on this. Entry animations resolve to their final state
- * rather than being skipped, so content is never left invisible.
- */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

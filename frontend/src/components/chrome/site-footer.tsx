@@ -12,14 +12,12 @@ export function SiteFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="mt-32 border-t border-line bg-surface">
+    <footer className="border-t border-line bg-surface">
       <Container className="flex flex-col gap-12 py-16">
         <div className="flex flex-col gap-10 sm:flex-row sm:justify-between">
           <div className="flex max-w-sm flex-col gap-3">
             <Link href="/" className="flex items-center gap-2 text-base font-semibold text-text">
-              <span className="flex size-6 items-center justify-center rounded-md bg-accent text-[11px] font-bold text-accent-contrast">
-                K
-              </span>
+              <span aria-hidden className="size-2.5 rounded-pill bg-accent" />
               Kiln
             </Link>
             <p className="text-sm leading-relaxed text-text-muted">
@@ -30,7 +28,7 @@ export function SiteFooter() {
 
           <div className="grid grid-cols-2 gap-10 sm:gap-16">
             <nav aria-label="Learn" className="flex flex-col gap-3">
-              <h2 className="text-sm font-medium text-text">Learn</h2>
+              <h2 className="microlabel">Learn</h2>
               <Link href="/courses" className="text-sm text-text-muted transition-colors hover:text-text">
                 All courses
               </Link>
@@ -40,7 +38,7 @@ export function SiteFooter() {
             </nav>
 
             <nav aria-label="Account" className="flex flex-col gap-3">
-              <h2 className="text-sm font-medium text-text">Account</h2>
+              <h2 className="microlabel">Account</h2>
               <Link href="/login" className="text-sm text-text-muted transition-colors hover:text-text">
                 Log in
               </Link>

@@ -74,22 +74,19 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <header className="sticky top-0 z-30 px-4 pt-6 sm:px-6">
+    <header className="sticky top-0 z-30 border-b border-line bg-page/80 backdrop-blur-xl">
       <nav
         aria-label="Main"
         className={cn(
-          'mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 rounded-pill',
-          'border border-line bg-surface-raised/80 pl-5 pr-2 backdrop-blur-xl',
-          'shadow-[var(--shadow-ambient)]'
+          'mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4',
+          'px-4 sm:px-6 lg:px-8'
         )}
       >
         <Link
           href="/"
           className="flex shrink-0 items-center gap-2 text-base font-semibold tracking-tight text-text"
         >
-          <span className="flex size-6 items-center justify-center rounded-md bg-accent text-[11px] font-bold text-accent-contrast">
-            K
-          </span>
+          <span aria-hidden className="size-2.5 rounded-pill bg-accent" />
           Kiln
         </Link>
 
@@ -113,6 +110,17 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
 
           {user ? (
             <div className="hidden items-center gap-2 md:flex">
+              {user.role === 'student' ? (
+                <Link
+                  href="/my-courses"
+                  className={cn(
+                    'rounded-pill px-3.5 py-2 text-sm transition-colors duration-200',
+                    isActive('/my-courses') ? 'text-text' : 'text-text-muted hover:text-text'
+                  )}
+                >
+                  My courses
+                </Link>
+              ) : null}
               <ButtonLink href="/dashboard" variant="outline" size="sm">
                 Dashboard
               </ButtonLink>

@@ -4,7 +4,7 @@ export default function BlogLoading() {
   return (
     <div className="py-16 lg:py-20">
       <Container className="flex flex-col gap-14">
-        <SectionHeading title="Writing" />
+        <SectionHeading as="h1" title="Writing" />
 
         <div className="grid gap-8 rounded-card border border-line bg-surface p-6 sm:p-8 lg:grid-cols-2">
           <Skeleton className="aspect-[16/10] w-full rounded-card" />

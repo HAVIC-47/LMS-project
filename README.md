@@ -80,6 +80,19 @@ npm run dev                    # http://localhost:3000
 
 `npm run build` for a production build, `npm run lint` for the linter.
 
+### Browser tests
+
+Two Playwright suites run against a live backend and a running frontend:
+
+```bash
+python frontend/scripts/browser-test.py          # public pages, auth, all four roles
+python frontend/scripts/browser-test-student.py  # lessons, progress, quiz
+```
+
+They assert behaviour rather than pixels: that a lesson body never appears on a public
+page, that the quiz HTML contains no answer key, that progress survives a reload, and that
+a non-student cannot open the player.
+
 ### How authentication works
 
 The browser never holds the Strapi JWT.
@@ -92,6 +105,20 @@ The browser never holds the Strapi JWT.
 
 The token is therefore unreadable by any script on the page, which is verified by a test
 asserting `document.cookie` does not contain it.
+
+### Design system
+
+Dark-first. Tokens live in `src/app/globals.css` and nothing hard-codes a colour.
+
+The accent is split in two deliberately: `--accent` is a fill that always carries
+`--accent-ink-on` text, and `--accent-text` is the accent used *as* text, which is bright
+lime on dark and a deep olive on light. Splitting them means an unreadable pairing cannot
+be assembled by picking the wrong utility.
+
+Three radii, no others. Mono numerals and small uppercase labels are reserved for data,
+never used as a heading eyebrow.
+
+---
 
 ### Route protection
 
@@ -154,7 +181,17 @@ why.
 - [x] Working enrollment from the course page
 - [x] Loading skeletons, empty states, error boundary, 404, no-JS fallback for reveals
 - [x] 30-check browser suite covering all four roles, dark mode and 375px layout
-**Part 3 - student experience** - lesson viewer, mark-complete UI, quiz runner, results
+**Part 3 - student experience** ✅
+
+- [x] Redesigned frontend: dark-first product-grade system, lime accent, mono data labels
+- [x] `/my-courses` with progress rings, unfinished courses first, quiz result history
+- [x] Course player at `/learn/[slug]` with a sticky contents rail that survives navigation
+- [x] `/learn/[slug]` resumes at the first unfinished lesson
+- [x] Lesson viewer for text and embedded video (YouTube and Vimeo links normalised)
+- [x] Mark complete and undo, server-recomputed percentage, persists across reloads
+- [x] Quiz runner with instant auto-graded score, marked answers and attempt history
+- [x] Player is student-only, enrollment-gated, and 404s on unpublished courses
+- [x] 25-check browser suite for the student journey
 **Part 4 - staff dashboards + deployment** - CRUD UIs, blog editor, admin panel, Vercel + Railway
 
 ---

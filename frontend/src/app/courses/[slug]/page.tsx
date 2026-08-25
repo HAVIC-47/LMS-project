@@ -9,7 +9,7 @@ import {
   TextAlignLeftIcon,
 } from '@phosphor-icons/react/dist/ssr';
 import { ButtonLink } from '@/components/ui/button';
-import { Badge, Container, Enclosure, LevelBadge } from '@/components/ui/primitives';
+import { Badge, Container, LevelBadge, Panel } from '@/components/ui/primitives';
 import { EnrollButton, EnrolledNotice } from '@/components/marketing/enroll-button';
 import { getCourseBySlug } from '@/lib/api/public';
 import { isEnrolledInCourse } from '@/lib/api/student';
@@ -92,8 +92,8 @@ export default async function CourseDetailPage({ params }: PageProps) {
 
           {course.coverImageUrl ? (
             <div className="lg:col-span-5">
-              <Enclosure>
-                <div className="relative aspect-[4/3] overflow-hidden rounded-[calc(var(--radius-card)-1px)]">
+              <Panel className="overflow-hidden">
+                <div className="relative aspect-[4/3]">
                   <Image
                     src={course.coverImageUrl}
                     alt=""
@@ -103,7 +103,7 @@ export default async function CourseDetailPage({ params }: PageProps) {
                     className="object-cover"
                   />
                 </div>
-              </Enclosure>
+              </Panel>
             </div>
           ) : null}
         </header>
@@ -150,7 +150,7 @@ export default async function CourseDetailPage({ params }: PageProps) {
               {quiz ? (
                 <li className="flex items-center gap-4 border-b border-line py-4">
                   <span className="w-6 shrink-0" aria-hidden />
-                  <span className="shrink-0 text-accent" aria-hidden>
+                  <span className="shrink-0 text-accent-text" aria-hidden>
                     <QuestionIcon size={18} />
                   </span>
                   <span className="flex-1 text-text">
@@ -204,7 +204,7 @@ function EnrollCta({
         </ButtonLink>
         <p className="text-sm text-text-muted">
           Already have an account?{' '}
-          <Link href={`/login?next=/courses/${slug}`} className="font-medium text-accent">
+          <Link href={`/login?next=/courses/${slug}`} className="font-medium text-accent-text">
             Log in
           </Link>
         </p>
@@ -224,8 +224,8 @@ function EnrollCta({
     return (
       <div className="flex flex-col gap-3">
         <EnrolledNotice />
-        <ButtonLink href="/dashboard" variant="outline" size="lg">
-          Go to your courses
+        <ButtonLink href={`/learn/${slug}`} size="lg" withArrow>
+          Continue the course
         </ButtonLink>
       </div>
     );

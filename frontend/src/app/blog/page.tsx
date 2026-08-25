@@ -29,7 +29,7 @@ export default async function BlogPage() {
     return (
       <div className="py-16 lg:py-20">
         <Container className="flex flex-col gap-12">
-          <SectionHeading title="Writing" />
+          <SectionHeading as="h1" title="Writing" />
           <EmptyState
             icon={<NotePencilIcon size={32} aria-hidden />}
             title="Nothing published yet"
@@ -46,6 +46,7 @@ export default async function BlogPage() {
     <div className="py-16 lg:py-20">
       <Container className="flex flex-col gap-14">
         <SectionHeading
+          as="h1"
           title="Writing"
           lede="Notes on learning, teaching and how this platform is put together."
         />
@@ -72,7 +73,7 @@ export default async function BlogPage() {
               <p className="font-mono text-xs tabular-nums text-text-subtle">
                 {formatDate(lead.publishedAt ?? lead.createdAt)}
               </p>
-              <h2 className="text-2xl font-semibold leading-snug text-text transition-colors duration-200 group-hover:text-accent sm:text-3xl">
+              <h2 className="text-2xl font-semibold leading-snug text-text transition-colors duration-200 group-hover:text-accent-text sm:text-3xl">
                 {lead.title}
               </h2>
               {lead.excerpt ? (
@@ -98,7 +99,7 @@ export default async function BlogPage() {
                   </p>
 
                   <div className="flex flex-col gap-2 sm:col-span-9">
-                    <h2 className="text-xl font-semibold text-text transition-colors duration-200 group-hover:text-accent">
+                    <h2 className="text-xl font-semibold text-text transition-colors duration-200 group-hover:text-accent-text">
                       {post.title}
                     </h2>
                     {post.excerpt ? (
