@@ -1,5 +1,10 @@
 import type { Core } from '@strapi/strapi';
-import { applyPermissionMatrix, ensureRoles, setDefaultSignupRole } from './bootstrap/roles';
+import {
+  applyPermissionMatrix,
+  ensureRoles,
+  promoteBootstrapAdmin,
+  setDefaultSignupRole,
+} from './bootstrap/roles';
 import { seedDemoData } from './bootstrap/seed';
 
 export default {
@@ -20,6 +25,8 @@ export default {
     await applyPermissionMatrix(strapi);
     await setDefaultSignupRole(strapi);
 
+    // After the seed would have run, so a seeded admin is already in place and this is a
+    // no-op; before it in production, where the seed never runs at all.
     if (process.env.SEED_DEMO_DATA === 'true') {
       try {
         await seedDemoData(strapi);
@@ -28,5 +35,7 @@ export default {
         strapi.log.error(`[lms] demo seed failed: ${(error as Error).message}`);
       }
     }
+
+    await promoteBootstrapAdmin(strapi);
   },
 };

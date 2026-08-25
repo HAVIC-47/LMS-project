@@ -73,6 +73,22 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
+  /**
+   * Links that only make sense for one role. Rendering them for everyone would put a
+   * visitor one click from a page that would only bounce them to /forbidden.
+   */
+  const roleLinks =
+    user?.role === 'student'
+      ? [{ href: '/my-courses', label: 'My courses' }]
+      : user?.role === 'admin'
+        ? [
+            { href: '/studio', label: 'Studio' },
+            { href: '/admin', label: 'Admin' },
+          ]
+        : user?.role === 'content-manager' || user?.role === 'instructor'
+          ? [{ href: '/studio', label: 'Studio' }]
+          : [];
+
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-page/80 backdrop-blur-xl">
       <nav
@@ -110,17 +126,18 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
 
           {user ? (
             <div className="hidden items-center gap-2 md:flex">
-              {user.role === 'student' ? (
+              {roleLinks.map((link) => (
                 <Link
-                  href="/my-courses"
+                  key={link.href}
+                  href={link.href}
                   className={cn(
                     'rounded-pill px-3.5 py-2 text-sm transition-colors duration-200',
-                    isActive('/my-courses') ? 'text-text' : 'text-text-muted hover:text-text'
+                    isActive(link.href) ? 'text-text' : 'text-text-muted hover:text-text'
                   )}
                 >
-                  My courses
+                  {link.label}
                 </Link>
-              ) : null}
+              ))}
               <ButtonLink href="/dashboard" variant="outline" size="sm">
                 Dashboard
               </ButtonLink>

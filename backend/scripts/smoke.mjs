@@ -603,6 +603,68 @@ async function main() {
     403
   );
 
+  /**
+   * Listing their own content.
+   *
+   * Regression guard. The instructor scoping filter originally walked `course.owner.id`,
+   * which the content-API query validator rejects outright because no role can read the
+   * user collection. The result was a 400 on every one of these routes: an instructor
+   * could create and edit lessons but could not list them. Asserting the status alone is
+   * not enough, so the counts are compared as well.
+   */
+  const instructorLessons = await call(instructor.jwt, 'GET', '/api/lessons?pagination[pageSize]=100');
+  const managerLessons = await call(cm.jwt, 'GET', '/api/lessons?pagination[pageSize]=100');
+
+  expectTrue(
+    'instructor',
+    'can list lessons',
+    instructorLessons.status === 200,
+    `status ${instructorLessons.status}`
+  );
+
+  expectTrue(
+    'instructor',
+    'lesson list is scoped to their own courses',
+    (instructorLessons.json?.data?.length ?? 0) > 0 &&
+      (instructorLessons.json?.data?.length ?? 0) < (managerLessons.json?.data?.length ?? 0),
+    `instructor ${instructorLessons.json?.data?.length}, content manager ${managerLessons.json?.data?.length}`
+  );
+
+  /**
+   * Regression guard. The scoping filter was merged with `{ ...clientFilters, course: scope }`,
+   * which deletes the caller's own `course` condition because both are keyed on `course`.
+   * The symptom was a request for one course's quiz returning a different course's quiz.
+   */
+  const scopedLessons = await call(
+    instructor.jwt,
+    'GET',
+    `/api/lessons?filters[course][documentId][$eq]=${jsCourse.documentId}`
+  );
+
+  expectTrue(
+    'instructor',
+    'a course filter is respected, not replaced by the ownership scope',
+    (scopedLessons.json?.data ?? []).length > 0 &&
+      (scopedLessons.json?.data ?? []).length < (instructorLessons.json?.data?.length ?? 0),
+    `${scopedLessons.json?.data?.length} for the course vs ${instructorLessons.json?.data?.length} in total`
+  );
+
+  const foreignLessons = await call(
+    instructor.jwt,
+    'GET',
+    `/api/lessons?filters[course][documentId][$eq]=${designCourse.documentId}`
+  );
+
+  expectTrue(
+    'instructor',
+    'filtering by another owner’s course returns nothing',
+    (foreignLessons.json?.data ?? []).length === 0,
+    `${foreignLessons.json?.data?.length} rows`
+  );
+
+  await expectStatus('instructor', 'can list quizzes', instructor.jwt, 'GET', '/api/quizzes?populate=questions', 200);
+  await expectStatus('instructor', 'can list questions', instructor.jwt, 'GET', '/api/questions', 200);
+
   await expectStatus('instructor', 'cannot write a blog post', instructor.jwt, 'POST', '/api/blog-posts', 403, {
     data: { title: 'Nope', slug: `instructor-post-${stamp}` },
   });

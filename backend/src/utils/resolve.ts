@@ -175,3 +175,50 @@ export const isEnrolled = async (
 
   return count > 0;
 };
+
+/**
+ * The numeric ids of the courses an instructor owns.
+ *
+ * Scoping a content-API list by `course.owner.id` looks natural and does not work: the
+ * query validator rejects any filter path that walks into a relation the caller cannot
+ * read, and no application role is granted `plugin::users-permissions.user.find`. The
+ * result is a 400, not a filtered list.
+ *
+ * `strapi.db.query` is the lower-level API and is not subject to that validation, so the
+ * owner lookup happens here and callers filter on `course.id.$in` instead, which is a
+ * plain scalar path the validator accepts.
+ */
+export const findOwnedCourseIds = async (
+  strapi: Core.Strapi,
+  userId: number
+): Promise<number[]> => {
+  const courses = await strapi.db.query('api::course.course').findMany({
+    where: { owner: { id: userId } },
+    select: ['id'],
+  });
+
+  return (courses as { id: number }[]).map((course) => course.id);
+};
+
+/**
+ * Combines a caller's filters with a scope the caller must not be able to escape.
+ *
+ * Spreading them into one object looks equivalent and is not: both the client filter and
+ * the scope are usually keyed on the same relation, so `{ ...clientFilters, course: scope }`
+ * silently deletes the client's `course` condition. That is how a request for "the quiz
+ * belonging to course X" came back with a quiz from a different course.
+ *
+ * `$and` keeps both. The scope is a separate branch, so a client filter can only ever
+ * narrow the result further, never widen it past the scope.
+ */
+export const withScope = (
+  clientFilters: unknown,
+  scope: Record<string, unknown>
+): Record<string, unknown> => {
+  const hasClientFilters =
+    clientFilters && typeof clientFilters === 'object' && Object.keys(clientFilters).length > 0;
+
+  return hasClientFilters
+    ? { $and: [clientFilters as Record<string, unknown>, scope] }
+    : scope;
+};

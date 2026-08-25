@@ -3,6 +3,8 @@ import { canManageCourse, isInstructor, isStudent, type AuthUser } from '../../.
 import {
   findCourseByAnyId,
   findCourseByQuizDocumentId,
+  findOwnedCourseIds,
+  withScope,
   isEnrolled,
   readRelationInput,
 } from '../../../utils/resolve';
@@ -19,9 +21,16 @@ export default factories.createCoreController('api::quiz.quiz', ({ strapi }) => 
     const user = ctx.state.user as AuthUser;
 
     if (isInstructor(user)) {
+      // See the note in the lesson controller: filtering through `course.owner` is a 400.
+      const ownedCourseIds = await findOwnedCourseIds(strapi, user.id);
+
+      if (ownedCourseIds.length === 0) {
+        return { data: [], meta: { pagination: { page: 1, pageSize: 0, pageCount: 0, total: 0 } } };
+      }
+
       ctx.query = {
         ...ctx.query,
-        filters: { ...(ctx.query?.filters as object), course: { owner: { id: user.id } } },
+        filters: withScope(ctx.query?.filters, { course: { id: { $in: ownedCourseIds } } }),
       };
     }
 

@@ -1,6 +1,12 @@
 import { factories } from '@strapi/strapi';
 import { canManageCourse, isInstructor, type AuthUser } from '../../../utils/permissions';
-import { findCourseByQuestionDocumentId, findQuizByAnyId, readRelationInput } from '../../../utils/resolve';
+import {
+  findCourseByQuestionDocumentId,
+  findOwnedCourseIds,
+  findQuizByAnyId,
+  withScope,
+  readRelationInput,
+} from '../../../utils/resolve';
 
 /**
  * Questions hold the answer key, so every route on this content type is staff-only and
@@ -12,12 +18,18 @@ export default factories.createCoreController('api::question.question', ({ strap
     const user = ctx.state.user as AuthUser;
 
     if (isInstructor(user)) {
+      // See the note in the lesson controller: filtering through `course.owner` is a 400.
+      const ownedCourseIds = await findOwnedCourseIds(strapi, user.id);
+
+      if (ownedCourseIds.length === 0) {
+        return { data: [], meta: { pagination: { page: 1, pageSize: 0, pageCount: 0, total: 0 } } };
+      }
+
       ctx.query = {
         ...ctx.query,
-        filters: {
-          ...(ctx.query?.filters as object),
-          quiz: { course: { owner: { id: user.id } } },
-        },
+        filters: withScope(ctx.query?.filters, {
+          quiz: { course: { id: { $in: ownedCourseIds } } },
+        }),
       };
     }
 

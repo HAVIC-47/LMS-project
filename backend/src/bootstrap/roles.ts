@@ -108,3 +108,56 @@ export const setDefaultSignupRole = async (strapi: Core.Strapi) => {
 
   strapi.log.info(`[lms] default sign-up role set to "${ROLES.STUDENT}"`);
 };
+
+/**
+ * Promotes a named account to admin on boot.
+ *
+ * This closes the bootstrap hole in a production deploy. With `SEED_DEMO_DATA` off there
+ * is no admin, and because nobody can self-assign a role, there would be no way to create
+ * one through the application at all. The alternative is remembering to go into Strapi's
+ * own admin panel and edit the row by hand, which is a manual step nobody documents and
+ * everybody forgets.
+ *
+ * Deliberately narrow:
+ *   - It only ever promotes TO admin. It never demotes, so it cannot fight an admin who
+ *     later reassigns roles through the panel.
+ *   - It does not create the account. The person still signs up normally and proves they
+ *     own the address; this only raises an account that already exists. An env var that
+ *     could conjure a privileged account out of nothing is a much worse thing to leak.
+ *   - It is idempotent, so leaving the variable set is harmless.
+ *   - A missing account is logged loudly rather than silently ignored, because the usual
+ *     cause is a typo in the address and the symptom otherwise is "why am I not an admin".
+ */
+export const promoteBootstrapAdmin = async (strapi: Core.Strapi) => {
+  const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
+
+  if (!email) return;
+
+  const user = await strapi.db.query('plugin::users-permissions.user').findOne({
+    where: { email },
+    populate: { role: true },
+  });
+
+  if (!user) {
+    strapi.log.warn(
+      `[lms] BOOTSTRAP_ADMIN_EMAIL is set to "${email}" but no account has that address. ` +
+        'Sign up with it first, then restart, and the account will be promoted.'
+    );
+    return;
+  }
+
+  if (user.role?.type === ROLES.ADMIN) return;
+
+  const adminRole = await strapi.db
+    .query(ROLE_UID)
+    .findOne({ where: { type: ROLES.ADMIN } });
+
+  if (!adminRole) {
+    strapi.log.error('[lms] cannot promote the bootstrap admin: the admin role is missing');
+    return;
+  }
+
+  await strapi.plugin('users-permissions').service('user').edit(user.id, { role: adminRole.id });
+
+  strapi.log.info(`[lms] promoted ${email} to admin (BOOTSTRAP_ADMIN_EMAIL)`);
+};

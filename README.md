@@ -85,8 +85,9 @@ npm run dev                    # http://localhost:3000
 Two Playwright suites run against a live backend and a running frontend:
 
 ```bash
-python frontend/scripts/browser-test.py          # public pages, auth, all four roles
-python frontend/scripts/browser-test-student.py  # lessons, progress, quiz
+python frontend/scripts/browser-test.py            # public pages, auth, all four roles
+python frontend/scripts/browser-test-student.py    # lessons, progress, quiz
+python frontend/scripts/browser-test-authoring.py  # studio, blog publishing, admin roles
 ```
 
 They assert behaviour rather than pixels: that a lesson body never appears on a public
@@ -192,7 +193,77 @@ why.
 - [x] Quiz runner with instant auto-graded score, marked answers and attempt history
 - [x] Player is student-only, enrollment-gated, and 404s on unpublished courses
 - [x] 25-check browser suite for the student journey
-**Part 4 - staff dashboards + deployment** - CRUD UIs, blog editor, admin panel, Vercel + Railway
+**Part 4 - authoring, admin and deployment** ✅
+
+- [x] Studio at `/studio`: course list scoped by role, create, edit, delete
+- [x] Lesson editor with written and video types, explicit ordering
+- [x] Quiz editor; the correct answer is picked with a radio, never a typed index
+- [x] Per-course student progress and best quiz score for the owning staff
+- [x] Blog editor with save-as-draft and publish/unpublish as separate actions
+- [x] Admin panel at `/admin`: platform stats, user table, role assignment
+- [x] Bootstrap admin via `BOOTSTRAP_ADMIN_EMAIL`, closing the first-admin gap
+- [x] Publishing invalidates the cached public pages, so it is visible immediately
+- [x] Deployment configs for Railway and Vercel
+- [x] 32-check browser suite for authoring, publishing and role management
+
+---
+
+## How roles are assigned
+
+Nobody chooses their own role.
+
+1. **Everyone signs up the same way** and lands as `student`. Two things enforce it: the
+   users-permissions default role, and `register.allowedFields: []`, which makes `role` an
+   invalid parameter. Sending one returns `400 ValidationError`, not a silent ignore.
+2. **An admin changes it** from `/admin`. The change takes effect on the user's existing
+   session, because the role is re-read from the backend on every request rather than
+   baked into the JWT.
+3. **The first admin** comes from `BOOTSTRAP_ADMIN_EMAIL`. Sign up with that address, set
+   the variable, restart; the account is promoted on boot. It only ever promotes, never
+   demotes, and it never creates an account, so the person still has to prove they own the
+   address by registering.
+
+The backend refuses to demote the last remaining admin.
+
+---
+
+## Deploying
+
+### Backend on Railway
+
+1. New project, **Deploy from GitHub repo**, root directory `backend`.
+2. Add a **Postgres** database to the project. Railway injects `DATABASE_URL`, and
+   `config/database.ts` switches to Postgres the moment that variable exists, so nothing
+   else needs changing. The `pg` driver is a dependency.
+3. Set the variables:
+
+   | Variable | Value |
+   |---|---|
+   | `APP_KEYS`, `API_TOKEN_SALT`, `ADMIN_JWT_SECRET`, `TRANSFER_TOKEN_SALT`, `JWT_SECRET`, `ENCRYPTION_KEY` | Fresh secrets, one per environment |
+   | `NODE_ENV` | `production` |
+   | `FRONTEND_URL` | Your Vercel URL, for CORS |
+   | `BOOTSTRAP_ADMIN_EMAIL` | The address you will sign up with |
+   | `SEED_DEMO_DATA` | Leave unset in production |
+
+   Generate a secret with:
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(16).toString('base64'))"
+   ```
+4. Deploy, then open `https://<your-app>.railway.app/admin` once to create the Strapi
+   superadmin. Roles, permissions and the default sign-up role are applied automatically
+   on boot.
+
+### Frontend on Vercel
+
+1. Import the same repo, root directory `frontend`. Next.js is detected automatically.
+2. Set `STRAPI_URL` to the Railway URL. It is server-side only and never reaches the browser.
+3. Deploy, then set `FRONTEND_URL` on Railway to the Vercel URL and redeploy the backend so
+   CORS allows it.
+
+### First run in production
+
+Sign up at `/signup` with the `BOOTSTRAP_ADMIN_EMAIL` address, restart the Railway service
+once, and that account becomes the admin. Everyone else is promoted from `/admin`.
 
 ---
 
@@ -212,3 +283,19 @@ why.
 | Variable | Purpose |
 |---|---|
 | `STRAPI_URL` | Origin of the Strapi API. Server-side only; it is never sent to the browser |
+
+---
+
+## Video walkthrough outline
+
+The spec asks for seven things. Where each one lives:
+
+| Required | Where to show it |
+|---|---|
+| Live demo across roles | Student: `/courses` to enroll, `/learn/...` for a lesson, mark complete, sit the quiz. Instructor: `/studio` to create a course, lesson and quiz. Admin: `/admin` to change a role |
+| Data flow, one feature | Mark complete: `complete-button.tsx` to `/api/progress` to Strapi `/lesson-progresses/complete` and back with a recomputed percentage |
+| Role enforcement on the backend | `backend/src/bootstrap/permission-map.ts` (the matrix in code), `src/policies/`, then a controller ownership check. Run `npm run smoke` on camera |
+| Progress tracking logic | `backend/src/utils/progress.ts`, `computeCourseProgress`. Explain why the percentage is derived rather than stored |
+| Quiz grading logic | `backend/src/utils/grading.ts`, `gradeAttempt`. A pure function; the client sends choices, never a score |
+| Admin panel and blog | `/admin` role change, then `/studio/blog` draft to published, showing the draft is absent from `/blog` |
+| Deployment setup | `config/database.ts` switching on `DATABASE_URL`, the env vars on both hosts, and why `STRAPI_URL` is server-side only |

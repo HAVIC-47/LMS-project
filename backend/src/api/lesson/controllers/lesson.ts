@@ -8,6 +8,8 @@ import {
 import {
   findCourseByAnyId,
   findCourseByLessonDocumentId,
+  findOwnedCourseIds,
+  withScope,
   isEnrolled,
   readRelationInput,
 } from '../../../utils/resolve';
@@ -44,12 +46,20 @@ export default factories.createCoreController('api::lesson.lesson', ({ strapi })
 
       ctx.query = {
         ...ctx.query,
-        filters: { ...(ctx.query?.filters as object), course: { id: { $in: courseIds } } },
+        filters: withScope(ctx.query?.filters, { course: { id: { $in: courseIds } } }),
       };
     } else if (isInstructor(user)) {
+      // Not `course.owner.id`: that path walks into the user collection, which the query
+      // validator refuses because no role can read it. Resolve the ids first instead.
+      const ownedCourseIds = await findOwnedCourseIds(strapi, user.id);
+
+      if (ownedCourseIds.length === 0) {
+        return { data: [], meta: { pagination: { page: 1, pageSize: 0, pageCount: 0, total: 0 } } };
+      }
+
       ctx.query = {
         ...ctx.query,
-        filters: { ...(ctx.query?.filters as object), course: { owner: { id: user.id } } },
+        filters: withScope(ctx.query?.filters, { course: { id: { $in: ownedCourseIds } } }),
       };
     }
 

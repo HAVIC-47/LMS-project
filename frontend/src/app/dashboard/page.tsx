@@ -136,7 +136,12 @@ async function StaffView() {
 
   return (
     <section className="flex flex-col gap-6">
-      <h2 className="text-xl font-semibold">Courses you manage</h2>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="text-xl font-semibold">Courses you manage</h2>
+        <Link href="/studio" className="text-sm font-medium text-accent-text">
+          Open the studio
+        </Link>
+      </div>
 
       <div className="flex flex-col">
         {courses.map((course) => (
