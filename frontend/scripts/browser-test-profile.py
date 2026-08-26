@@ -111,6 +111,37 @@ with sync_playwright() as p:
     draft_stat = anon.locator('main dl .microlabel', has_text=re.compile(r'^drafts$', re.I)).count()
     check("visitor sees no draft count", draft_stat == 0, f"{draft_stat} draft stats")
 
+    # A username with a space in it.
+    #
+    # Path segments arrive from the router still percent-encoded, so `Faisal%20Hossain`
+    # was being encoded a second time into `Faisal%2520Hossain`; Strapi found no such user
+    # and the page rendered its not-found state. Every account whose name contains a space
+    # had an unreachable profile, which is most accounts registered with a real name.
+    api = p.request.new_context()
+    admin_auth = api.post(
+        "http://127.0.0.1:1337/api/auth/local",
+        data={"identifier": "admin@lms.test", "password": PW},
+    ).json()
+    everyone = api.get(
+        "http://127.0.0.1:1337/api/platform/users",
+        headers={"Authorization": f"Bearer {admin_auth['jwt']}"},
+    ).json()["data"]
+
+    spaced = next((u["username"] for u in everyone if " " in u["username"]), None)
+
+    if spaced:
+        from urllib.parse import quote
+
+        anon.goto(f"{BASE}/u/{quote(spaced)}", wait_until="networkidle")
+        anon.wait_for_timeout(500)
+        check(
+            "a profile whose username contains a space is reachable",
+            spaced.lower() in anon.inner_text("main").lower(),
+            f"{spaced} -> {anon.inner_text('main')[:60].replace(chr(10), ' ')}",
+        )
+    else:
+        check("a profile whose username contains a space is reachable", True, "no such account")
+
     anon.goto(f"{BASE}/u/nobody-at-all", wait_until="networkidle")
     check("unknown username is a 404", "404" in anon.content() or "not found" in anon.inner_text("body").lower())
     anon.close()

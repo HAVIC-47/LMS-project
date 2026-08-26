@@ -122,6 +122,8 @@ export type PlatformUser = {
   email: string;
   confirmed: boolean;
   blocked: boolean;
+  courseAccessRestricted?: boolean;
+  blogAccessRestricted?: boolean;
   createdAt: string;
   role: { id: number; name: string; type: string } | null;
   ownedCourses: number;

@@ -30,6 +30,12 @@ const ALLOWED: RegExp[] = [
   // Admin panel. The role route is the one privileged write in the platform.
   /^platform\/users$/,
   /^platform\/users\/\d+\/role$/,
+  // Blocking and the two feature restrictions. Admin-only on the backend, like the role
+  // route beside it.
+  /^platform\/users\/\d+\/access$/,
+  // Removing a student from a course. Numeric because it addresses a user id, not a
+  // documentId — the pattern is deliberately narrower than the `[\w-]+` used above.
+  /^courses\/[\w-]+\/students\/\d+$/,
 ];
 
 const isAllowed = (path: string) => ALLOWED.some((pattern) => pattern.test(path));

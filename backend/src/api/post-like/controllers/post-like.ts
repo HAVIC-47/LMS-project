@@ -1,6 +1,7 @@
 import { factories } from '@strapi/strapi';
 import type { AuthUser } from '../../../utils/permissions';
 import { notify } from '../../../utils/notify';
+import { denyIfBlogRestricted } from '../../../utils/access';
 
 /**
  * Likes on blog posts.
@@ -46,6 +47,8 @@ export default factories.createCoreController('api::post-like.post-like', ({ str
    */
   async toggle(ctx) {
     const user = ctx.state.user as AuthUser;
+
+    if (denyIfBlogRestricted(ctx)) return;
 
     const body = (ctx.request.body ?? {}) as {
       postDocumentId?: string;

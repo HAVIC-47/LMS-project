@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { BooksIcon, PlusIcon } from '@phosphor-icons/react/dist/ssr';
 import { ButtonLink } from '@/components/ui/button';
 import { Badge, Container, EmptyState, SectionHeading } from '@/components/ui/primitives';
+import { FilterBar } from '@/components/ui/filter-bar';
+import { matches, oneOf } from '@/lib/list-filters';
 import { getOwnedCourses } from '@/lib/api/staff';
 import { getSessionUser } from '@/lib/session';
 import { ROLES } from '@/lib/types';
@@ -17,8 +19,29 @@ export const metadata: Metadata = { title: 'Studio' };
  * There is no "show all" switch here because there is no request this page could make to
  * widen it.
  */
-export default async function StudioPage() {
-  const [user, courses] = await Promise.all([getSessionUser(), getOwnedCourses()]);
+const LEVELS = ['beginner', 'intermediate', 'advanced'] as const;
+const STATUS = ['published', 'draft'] as const;
+
+export default async function StudioPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; level?: string; status?: string }>;
+}) {
+  const params = await searchParams;
+  const [user, all] = await Promise.all([getSessionUser(), getOwnedCourses()]);
+
+  const term = (params.q ?? '').trim();
+  const level = oneOf(params.level, LEVELS);
+  const status = oneOf(params.status, STATUS);
+
+  // Filtered here rather than in the query. `/courses/mine` is already scoped to what this
+  // person may edit, so the list is small and one request answers every filter.
+  const courses = all.filter((course) => {
+    if (level && course.level !== level) return false;
+    if (status === 'published' && !course.isPublished) return false;
+    if (status === 'draft' && course.isPublished) return false;
+    return matches(term, course.title, course.description, course.owner?.username);
+  });
 
   const isInstructor = user?.role === ROLES.INSTRUCTOR;
   const canWriteBlog = user?.role === ROLES.ADMIN || user?.role === ROLES.CONTENT_MANAGER;
@@ -49,6 +72,34 @@ export default async function StudioPage() {
             </ButtonLink>
           </div>
         </div>
+
+        <FilterBar
+          searchLabel="Search courses by title, description or owner"
+          searchPlaceholder="Search courses"
+          noun="course"
+          total={courses.length}
+          selects={[
+            {
+              name: 'status',
+              label: 'Filter by status',
+              options: [
+                { value: '', label: 'Any status' },
+                { value: 'published', label: 'Published' },
+                { value: 'draft', label: 'Draft' },
+              ],
+            },
+            {
+              name: 'level',
+              label: 'Filter by level',
+              options: [
+                { value: '', label: 'All levels' },
+                { value: 'beginner', label: 'Beginner' },
+                { value: 'intermediate', label: 'Intermediate' },
+                { value: 'advanced', label: 'Advanced' },
+              ],
+            },
+          ]}
+        />
 
         {courses.length === 0 ? (
           <EmptyState

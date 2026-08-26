@@ -80,6 +80,14 @@
     "website": {
       "type": "string",
       "maxLength": 200
+    },
+    "courseAccessRestricted": {
+      "type": "boolean",
+      "default": false
+    },
+    "blogAccessRestricted": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

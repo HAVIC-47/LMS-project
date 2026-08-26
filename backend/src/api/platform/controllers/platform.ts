@@ -165,6 +165,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
             createdAt: string;
             displayName?: string | null;
             avatarUrl?: string | null;
+            courseAccessRestricted?: boolean;
+            blogAccessRestricted?: boolean;
             role?: { id: number; name: string; type: string } | null;
           }) => ({
             id: user.id,
@@ -176,6 +178,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
             createdAt: user.createdAt,
             displayName: user.displayName ?? null,
             avatarUrl: user.avatarUrl ?? null,
+            courseAccessRestricted: user.courseAccessRestricted ?? false,
+            blogAccessRestricted: user.blogAccessRestricted ?? false,
             role: user.role ? { id: user.role.id, name: user.role.name, type: user.role.type } : null,
             ownedCourses: ownedByUser.get(user.id) ?? 0,
             enrollments: await strapi.db
@@ -184,6 +188,74 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
           })
         )
       ),
+    };
+  },
+
+  /**
+   * PUT /api/platform/users/:id/access
+   *
+   * Blocking, and the two narrower feature restrictions. Separate from role assignment
+   * because they answer a different question: a role says what someone is for, these say
+   * what they are currently allowed to do, and conflating them would mean demoting somebody
+   * to silence them.
+   *
+   * Only the three flags are writable. Nothing here can touch a role, a password or an
+   * email, so this endpoint cannot be turned into a general user editor by a crafted body.
+   */
+  async updateUserAccess(ctx: Context) {
+    const actor = ctx.state.user as AuthUser;
+    const targetId = Number(ctx.params.id);
+
+    if (!Number.isInteger(targetId) || targetId <= 0) {
+      return ctx.badRequest('A numeric user id is required');
+    }
+
+    const body = (ctx.request.body ?? {}) as Record<string, unknown>;
+    const payload = (body.data ?? body) as Record<string, unknown>;
+
+    const data: Record<string, boolean> = {};
+
+    for (const key of ['blocked', 'courseAccessRestricted', 'blogAccessRestricted'] as const) {
+      if (key in payload) {
+        if (typeof payload[key] !== 'boolean') {
+          return ctx.badRequest(`\`${key}\` must be true or false`);
+        }
+        data[key] = payload[key] as boolean;
+      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      return ctx.badRequest('Nothing to update');
+    }
+
+    const target = await strapi.db.query('plugin::users-permissions.user').findOne({
+      where: { id: targetId },
+      populate: { role: true },
+    });
+
+    if (!target) return ctx.notFound('User not found');
+
+    // Blocking yourself out of the only account that can unblock anyone is not a decision
+    // the UI should be able to make by accident. Restrictions are still allowed on self —
+    // they are reversible from this same screen.
+    if (targetId === actor.id && data.blocked === true) {
+      return ctx.badRequest('You cannot block your own account');
+    }
+
+    await strapi.db.query('plugin::users-permissions.user').update({
+      where: { id: targetId },
+      data,
+    });
+
+    return {
+      data: {
+        id: target.id,
+        username: target.username,
+        blocked: data.blocked ?? target.blocked,
+        courseAccessRestricted:
+          data.courseAccessRestricted ?? target.courseAccessRestricted ?? false,
+        blogAccessRestricted: data.blogAccessRestricted ?? target.blogAccessRestricted ?? false,
+      },
     };
   },
 

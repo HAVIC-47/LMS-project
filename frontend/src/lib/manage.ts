@@ -51,3 +51,21 @@ export const setPostPublished = (documentId: string, published: boolean) =>
 
 export const setUserRole = (userId: number, role: string) =>
   send(`platform/users/${userId}/role`, 'PUT', { role });
+
+/**
+ * Blocking and the narrower feature restrictions.
+ *
+ * One call takes a partial set, so a screen with three switches does not have to send all
+ * three every time somebody flips one — and cannot accidentally clear the other two.
+ */
+export const setUserAccess = (
+  userId: number,
+  access: Partial<{
+    blocked: boolean;
+    courseAccessRestricted: boolean;
+    blogAccessRestricted: boolean;
+  }>
+) => send(`platform/users/${userId}/access`, 'PUT', access);
+
+export const removeStudentFromCourse = (courseDocumentId: string, studentId: number) =>
+  send(`courses/${courseDocumentId}/students/${studentId}`, 'DELETE');

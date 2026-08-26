@@ -3,6 +3,7 @@ import type { AuthUser } from '../../../utils/permissions';
 import { findCourseByAnyId } from '../../../utils/resolve';
 import { computeCourseProgress } from '../../../utils/progress';
 import { notify } from '../../../utils/notify';
+import { denyIfCourseRestricted } from '../../../utils/access';
 
 /**
  * Enrollment is never created through the generic `POST /api/enrollments` route.
@@ -18,6 +19,8 @@ export default factories.createCoreController('api::enrollment.enrollment', ({ s
    */
   async enroll(ctx) {
     const user = ctx.state.user as AuthUser;
+
+    if (denyIfCourseRestricted(ctx)) return;
 
     const body = (ctx.request.body ?? {}) as {
       courseId?: string | number;

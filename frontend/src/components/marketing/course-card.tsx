@@ -15,7 +15,21 @@ import { LEVEL_LABELS, type Course } from '@/lib/types';
  * card lifts, the cover zooms slightly, and the corner arrow steps in. That is what makes
  * a card feel like an object rather than a bordered link.
  */
-export function CourseCard({ course, priority = false }: { course: Course; priority?: boolean }) {
+export function CourseCard({
+  course,
+  priority = false,
+  fixedMedia = false,
+}: {
+  course: Course;
+  priority?: boolean;
+  /**
+   * Swaps the cover from a ratio to a fixed height on desktop, for the expanding catalog
+   * grid. With `aspect-[16/10]` a card that widens on hover also gets taller, which drags
+   * the height of every card beside it and makes the row heave. Pinning the height keeps
+   * the expansion purely horizontal. Below `lg` the ratio is kept — nothing expands there.
+   */
+  fixedMedia?: boolean;
+}) {
   const lessonCount = course.lessonCount ?? course.lessons?.length ?? 0;
   const hasQuiz = (course.quizCount ?? course.quizzes?.length ?? 0) > 0;
 
@@ -29,12 +43,24 @@ export function CourseCard({ course, priority = false }: { course: Course; prior
         'hover:-translate-y-1 hover:border-line-strong hover:shadow-[var(--shadow-lifted)]'
       )}
     >
-      <div className="relative aspect-[16/10] overflow-hidden bg-shell">
+      <div
+        className={cn(
+          'relative overflow-hidden bg-shell',
+          fixedMedia ? 'aspect-[16/10] lg:aspect-auto lg:h-56' : 'aspect-[16/10]'
+        )}
+      >
         {/* A card with a hole where the image goes looks broken. The fallback reads as
             deliberate and keeps every card in the grid the same height. */}
         <CoverImage
           src={course.coverImageUrl}
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          sizes={
+            fixedMedia
+              ? // An expanding card reaches roughly half the container, so a flat 33vw
+                // would hand the optimizer a source too small for the state a reader
+                // actually looks at.
+                '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 45vw'
+              : '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw'
+          }
           priority={priority}
           // Not the level: the chip above already says it, and repeating it inside the
           // same tile reads as a rendering mistake.
@@ -55,10 +81,27 @@ export function CourseCard({ course, priority = false }: { course: Course; prior
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-5">
-        <h3 className="font-serif text-xl font-normal leading-snug text-text">{course.title}</h3>
+        <h3
+          className={cn(
+            'font-serif text-xl font-normal leading-snug text-text',
+            // Two lines reserved, always: a squeezed card wraps its title onto an extra
+            // line, and because flex items stretch to the tallest in the line that one
+            // extra line lifts the whole row the moment the pointer arrives.
+            fixedMedia && 'lg:line-clamp-2 lg:min-h-[2lh]'
+          )}
+        >
+          {course.title}
+        </h3>
 
         {course.description ? (
-          <p className="line-clamp-2 text-sm leading-relaxed text-text-muted">
+          <p
+            className={cn(
+              'line-clamp-2 text-sm leading-relaxed text-text-muted',
+              // Same reason as the title. The clamp caps the maximum; this sets the floor,
+              // so the block cannot change height by reflowing at a narrower width.
+              fixedMedia && 'lg:min-h-[2lh]'
+            )}
+          >
             {course.description}
           </p>
         ) : null}

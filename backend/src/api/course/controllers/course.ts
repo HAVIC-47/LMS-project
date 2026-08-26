@@ -385,6 +385,61 @@ export default factories.createCoreController('api::course.course', ({ strapi })
   },
 
   /**
+   * DELETE /api/courses/:id/students/:studentId
+   *
+   * Removes one student from one course.
+   *
+   * Granted to everyone who can already manage the course — admin, content manager, and the
+   * owning instructor — rather than admin alone. Un-enrolling is course management, and the
+   * person best placed to know a student is on the wrong course is whoever runs it. The
+   * `owns-course` policy is what keeps an instructor to their own.
+   *
+   * Their lesson progress for this course goes with the enrollment. It has to: the course
+   * insights count completions per lesson across the whole course, not per enrollment, so
+   * leaving the rows behind would keep a departed student inflating the completion figures
+   * of a cohort they are no longer in.
+   *
+   * Quiz attempts are kept. An attempt is a graded record of something that actually
+   * happened, and deleting assessment history as a side effect of a roster change is not a
+   * trade anybody asked for. They stop appearing on the course because the cohort is built
+   * from enrollments.
+   */
+  async removeStudent(ctx) {
+    const user = ctx.state.user as AuthUser;
+    const course = await findCourseByDocumentId(strapi, ctx.params.id);
+
+    if (!course) return ctx.notFound('Course not found');
+
+    if (!canManageCourse(user, course)) {
+      return ctx.forbidden('You cannot manage enrollment for this course');
+    }
+
+    const studentId = Number(ctx.params.studentId);
+
+    if (!Number.isInteger(studentId) || studentId <= 0) {
+      return ctx.badRequest('A numeric student id is required');
+    }
+
+    const enrollment = await strapi.db.query('api::enrollment.enrollment').findOne({
+      where: { course: { id: course.id }, student: { id: studentId } },
+    });
+
+    if (!enrollment) {
+      return ctx.notFound('That student is not enrolled in this course');
+    }
+
+    await strapi.db
+      .query('api::enrollment.enrollment')
+      .delete({ where: { id: enrollment.id } });
+
+    const { count } = await strapi.db.query('api::lesson-progress.lesson-progress').deleteMany({
+      where: { course: { id: course.id }, student: { id: studentId } },
+    });
+
+    return { data: { removed: true, progressCleared: count ?? 0 } };
+  },
+
+  /**
    * GET /api/courses/:id/insights
    *
    * The staff view of one course: who is enrolled, how far each has got, and what they

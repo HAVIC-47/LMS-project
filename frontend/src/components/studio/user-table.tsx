@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CheckIcon, WarningCircleIcon } from '@phosphor-icons/react';
 import { FormError } from '@/components/ui/field';
+import { AccessToggles } from './access-toggles';
 import { setUserRole } from '@/lib/manage';
 import { ROLE_LABELS, ROLES, type RoleType } from '@/lib/types';
 import type { PlatformUser } from '@/lib/api/authoring';
@@ -87,11 +88,17 @@ export function UserTable({ users, currentUserId }: { users: PlatformUser[]; cur
                 {user.blocked ? (
                   <span className="microlabel text-danger">blocked</span>
                 ) : null}
+                {user.courseAccessRestricted ? (
+                  <span className="microlabel text-danger">no courses</span>
+                ) : null}
+                {user.blogAccessRestricted ? (
+                  <span className="microlabel text-danger">no blog</span>
+                ) : null}
               </div>
               <span className="truncate text-sm text-text-subtle">{user.email}</span>
             </div>
 
-            <div className="flex items-center gap-5">
+            <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-3">
               <dl className="hidden items-center gap-5 sm:flex">
                 <div className="flex items-baseline gap-1.5">
                   <dd className="font-mono text-sm tabular-nums text-text">{user.ownedCourses}</dd>
@@ -125,6 +132,17 @@ export function UserTable({ users, currentUserId }: { users: PlatformUser[]; cur
                     </option>
                   ))}
                 </select>
+
+                <AccessToggles
+                  userId={user.id}
+                  username={user.username}
+                  isSelf={user.id === currentUserId}
+                  initial={{
+                    blocked: user.blocked,
+                    courseAccessRestricted: user.courseAccessRestricted ?? false,
+                    blogAccessRestricted: user.blogAccessRestricted ?? false,
+                  }}
+                />
 
                 <span aria-live="polite" className="flex size-5 items-center justify-center">
                   {savedId === user.id ? (

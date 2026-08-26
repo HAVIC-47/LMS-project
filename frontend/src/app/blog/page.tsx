@@ -3,7 +3,10 @@ import { NotePencilIcon } from '@phosphor-icons/react/dist/ssr';
 import { Container, EmptyState, SectionHeading } from '@/components/ui/primitives';
 import { Reveal } from '@/components/ui/reveal';
 import { PostCard } from '@/components/marketing/post-card';
+import { ButtonLink } from '@/components/ui/button';
+import { FilterBar } from '@/components/ui/filter-bar';
 import { cn } from '@/lib/cn';
+import { matches, oneOf, SORT_KEYS, SORT_LABELS, sortBy, type SortKey } from '@/lib/list-filters';
 import { getPublishedPosts } from '@/lib/api/public';
 
 export const metadata: Metadata = {
@@ -35,7 +38,12 @@ function chunk<T>(items: T[], size: number): T[][] {
  * Desktop only, and deliberately. On a phone there is no pointer to expand with, and a
  * card that opens on tap would be a second meaning for a tap that already navigates.
  */
-export default async function BlogPage() {
+export default async function BlogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; author?: string; sort?: string }>;
+}) {
+  const params = await searchParams;
   const posts = await getPublishedPosts();
 
   if (posts.length === 0) {
@@ -53,7 +61,26 @@ export default async function BlogPage() {
     );
   }
 
-  const rows = chunk(posts, ROW_SIZE);
+  // Author options come from the posts themselves rather than from a user lookup: no role
+  // may read the user collection, and the only authors worth offering are the ones who
+  // actually have something published here.
+  const authors = [...new Set(posts.map((post) => post.author?.username).filter(Boolean))].sort() as string[];
+
+  const term = (params.q ?? '').trim();
+  const author = params.author && authors.includes(params.author) ? params.author : null;
+  const sort = oneOf<SortKey>(params.sort, SORT_KEYS);
+
+  const filtered = posts.filter((post) => {
+    if (author && post.author?.username !== author) return false;
+    return matches(term, post.title, post.excerpt, post.body, post.author?.username);
+  });
+
+  const visible = sortBy(filtered, sort, (post) => ({
+    date: post.publishedAt ?? post.createdAt,
+    title: post.title,
+  }));
+
+  const rows = chunk(visible, ROW_SIZE);
 
   return (
     <div className="py-16 lg:py-20">
@@ -62,6 +89,34 @@ export default async function BlogPage() {
           as="h1"
           title="Blog"
           lede="Notes on learning, teaching and how this platform is put together."
+        />
+
+        <FilterBar
+          searchLabel="Search posts by title, summary or body"
+          searchPlaceholder="Search posts"
+          noun="post"
+          total={visible.length}
+          selects={[
+            {
+              name: 'author',
+              label: 'Filter by author',
+              options: [
+                { value: '', label: 'All authors' },
+                ...authors.map((name) => ({ value: name, label: name })),
+              ],
+            },
+            {
+              name: 'sort',
+              label: 'Sort posts',
+              options: [
+                { value: '', label: 'Newest first' },
+                ...SORT_KEYS.filter((key) => key !== 'newest').map((key) => ({
+                  value: key,
+                  label: SORT_LABELS[key],
+                })),
+              ],
+            },
+          ]}
         />
 
         {/*
@@ -76,6 +131,18 @@ export default async function BlogPage() {
           re-solves the whole line every frame, its neighbours give up their width smoothly
           without a single tween of their own.
         */}
+        {visible.length === 0 ? (
+          <EmptyState
+            icon={<NotePencilIcon size={32} aria-hidden />}
+            title="Nothing matches"
+            description="No published post matches those filters. Try a broader search."
+            action={
+              <ButtonLink href="/blog" variant="outline">
+                Clear filters
+              </ButtonLink>
+            }
+          />
+        ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:flex lg:flex-col">
           {rows.map((row, rowIndex) => (
             <div key={rowIndex} className="contents lg:flex lg:gap-6">
@@ -124,6 +191,7 @@ export default async function BlogPage() {
             </div>
           ))}
         </div>
+        )}
       </Container>
     </div>
   );

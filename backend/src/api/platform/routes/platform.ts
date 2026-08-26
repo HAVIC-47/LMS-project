@@ -25,6 +25,12 @@ export default {
     },
     {
       method: 'PUT',
+      path: '/platform/users/:id/access',
+      handler: 'platform.updateUserAccess',
+      config: { policies: ADMIN_ONLY },
+    },
+    {
+      method: 'PUT',
       path: '/platform/users/:id/role',
       handler: 'platform.updateUserRole',
       config: { policies: ADMIN_ONLY },

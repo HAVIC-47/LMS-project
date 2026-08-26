@@ -11,6 +11,7 @@ import {
 import { toStudentQuiz } from '../../../utils/sanitize';
 import { gradeAttempt, type SubmittedAnswer } from '../../../utils/grading';
 import { notify } from '../../../utils/notify';
+import { denyIfCourseRestricted } from '../../../utils/access';
 
 export default factories.createCoreController('api::quiz.quiz', ({ strapi }) => ({
   /**
@@ -133,6 +134,10 @@ export default factories.createCoreController('api::quiz.quiz', ({ strapi }) => 
    */
   async submit(ctx) {
     const user = ctx.state.user as AuthUser;
+
+    // Checked before the quiz is even loaded: a restricted student may still read the
+    // course, but a submitted attempt is a graded record and must not be created.
+    if (denyIfCourseRestricted(ctx)) return;
 
     const quiz = await strapi.db.query('api::quiz.quiz').findOne({
       where: { documentId: ctx.params.id },

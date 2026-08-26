@@ -1,6 +1,7 @@
 import { factories } from '@strapi/strapi';
 import { isAdmin, isContentManager, type AuthUser } from '../../../utils/permissions';
 import { excerpt, notify } from '../../../utils/notify';
+import { denyIfBlogRestricted } from '../../../utils/access';
 
 /**
  * Comments on blog posts.
@@ -98,6 +99,8 @@ export default factories.createCoreController('api::comment.comment', ({ strapi 
    */
   async create(ctx) {
     const user = ctx.state.user as AuthUser;
+
+    if (denyIfBlogRestricted(ctx)) return;
 
     const body = (ctx.request.body ?? {}) as {
       postDocumentId?: string;
