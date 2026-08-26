@@ -38,7 +38,7 @@ export function CourseCard({ course, priority = false }: { course: Course; prior
           priority={priority}
           // Not the level: the chip above already says it, and repeating it inside the
           // same tile reads as a rendering mistake.
-          fallback={<span className="font-serif text-2xl text-text-subtle">Kiln</span>}
+          fallback={<span className="font-serif text-2xl text-text-subtle">CourseCatalyst</span>}
           className="transition-transform duration-500 [transition-timing-function:var(--ease-settle)] group-hover:scale-[1.04]"
         />
 

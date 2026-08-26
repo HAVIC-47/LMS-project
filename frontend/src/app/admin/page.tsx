@@ -3,7 +3,8 @@ import { ButtonLink } from '@/components/ui/button';
 import { Container, SectionHeading, Stat } from '@/components/ui/primitives';
 import { UserTable } from '@/components/studio/user-table';
 import { getPlatformStats } from '@/lib/api/staff';
-import { getPlatformUsers } from '@/lib/api/authoring';
+import { UserFilters } from '@/components/studio/user-filters';
+import { getPlatformUsers } from '@/lib/api/insights';
 import { requireRole } from '@/lib/guards';
 import { ROLE_LABELS, ROLES, type RoleType } from '@/lib/types';
 
@@ -16,10 +17,21 @@ export const metadata: Metadata = { title: 'Admin' };
  * this page would render its shell and then show nothing at all, because Strapi would
  * refuse both calls. The guard controls what is worth rendering, not what is reachable.
  */
-export default async function AdminPage() {
+type Props = {
+  searchParams: Promise<{ search?: string; role?: string; status?: string }>;
+};
+
+export default async function AdminPage({ searchParams }: Props) {
   const user = await requireRole([ROLES.ADMIN]);
 
-  const [stats, users] = await Promise.all([getPlatformStats(), getPlatformUsers()]);
+  // Filters come from the URL and are applied by the backend query, so a filtered view is
+  // linkable and the browser never receives the users it is not showing.
+  const filters = await searchParams;
+
+  const [stats, users] = await Promise.all([
+    getPlatformStats(),
+    getPlatformUsers({ search: filters.search, role: filters.role, status: filters.status }),
+  ]);
 
   return (
     <div className="py-16 lg:py-20">
@@ -87,7 +99,15 @@ export default async function AdminPage() {
             ) : null}
           </div>
 
-          <UserTable users={users} currentUserId={user.id} />
+          <UserFilters total={users.length} />
+
+          {users.length === 0 ? (
+            <p className="rounded-card border border-dashed border-line-strong bg-surface px-6 py-12 text-center text-text-muted">
+              No user matches these filters.
+            </p>
+          ) : (
+            <UserTable users={users} currentUserId={user.id} />
+          )}
         </section>
       </Container>
     </div>

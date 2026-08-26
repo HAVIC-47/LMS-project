@@ -10,9 +10,18 @@ results = []
 console_errors = []
 
 
+def _out(line):
+    """Windows consoles are cp1252. Page text and framework messages can carry characters
+    it cannot encode — a zero-width space in one detail string used to raise
+    UnicodeEncodeError inside the reporter, turning a result into a stack trace and hiding
+    which check had actually failed. Encode defensively so the report always prints."""
+    enc = sys.stdout.encoding or "utf-8"
+    print(line.encode(enc, "replace").decode(enc))
+
+
 def check(name, condition, detail=""):
     results.append((name, bool(condition), detail))
-    print(("PASS  " if condition else "FAIL  ") + name + (f"  -- {detail}" if detail else ""))
+    _out(("PASS  " if condition else "FAIL  ") + name + (f"  -- {detail}" if detail else ""))
 
 
 def login(page, email):
@@ -43,7 +52,7 @@ with sync_playwright() as p:
     check("landing renders hero", "Learn the parts" in page.inner_text("main") and "that stick" in page.inner_text("main"))
     # The landing features the three newest courses, so it names no particular one.
     check("landing shows course cards", page.locator('a[href^="/courses/"]').count() >= 3)
-    check("brand is Kiln", "Kiln" in page.title(), page.title())
+    check("brand is CourseCatalyst", "CourseCatalyst" in page.title(), page.title())
     page.screenshot(path=f"{SHOTS}/01-landing.png", full_page=True)
 
     page.goto(f"{BASE}/courses", wait_until="networkidle")
@@ -119,7 +128,15 @@ with sync_playwright() as p:
     page2 = ctx2.new_page()
     login(page2, "instructor@lms.test")
     body = page2.content()
-    check("instructor sees own courses", "Courses you manage" in body)
+    # Asserted on the section that lists the courses rather than on a heading string.
+    # The old check looked for "Courses you manage", which was the previous dashboard's
+    # copy — it tested the wording, so rewriting the page broke it while the behaviour it
+    # was meant to guard was intact.
+    check(
+        "instructor sees own courses",
+        page2.locator('main a[href*="/insights"]').count() > 0,
+        f'{page2.locator("main a").count()} links in main',
+    )
     check("instructor role badge", "Instructor" in body)
     page2.screenshot(path=f"{SHOTS}/06-instructor-dashboard.png", full_page=True)
 
@@ -184,5 +201,5 @@ passed = sum(1 for _, ok, _ in results if ok)
 print(f"\n{'=' * 60}\n{passed}/{len(results)} passed\n{'=' * 60}")
 for name, ok, detail in results:
     if not ok:
-        print(f"  FAILED: {name}  {detail}")
+        _out(f"  FAILED: {name}  {detail}")
 sys.exit(0 if passed == len(results) else 1)

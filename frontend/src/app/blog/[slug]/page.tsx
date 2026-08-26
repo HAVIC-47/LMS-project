@@ -85,8 +85,19 @@ export default async function BlogPostPage({ params }: PageProps) {
             <p className="text-lg leading-relaxed text-text-muted">{post.excerpt}</p>
           ) : null}
 
+          {/* The byline is the natural way into a profile: you finish something and want
+              to know who wrote it. Linking here rather than from the card avoids nesting
+              an anchor inside the card's own link, which is invalid markup. */}
           {post.author ? (
-            <p className="text-sm text-text-subtle">By {post.author.username}</p>
+            <p className="text-sm text-text-subtle">
+              By{' '}
+              <Link
+                href={`/u/${post.author.username}`}
+                className="text-text underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-text"
+              >
+                {post.author.username}
+              </Link>
+            </p>
           ) : null}
         </header>
 

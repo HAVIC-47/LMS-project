@@ -9,9 +9,27 @@ STAMP = str(int(time.time()))[-6:]
 results = []
 
 
+def app_error(message: str) -> bool:
+    """Next's dev-mode instrumentation emits `Failed to execute 'measure' on 'Performance'`
+    when a route redirects or streams: the span ends up with a negative duration. It names
+    a framework internal (`?ProfilePage`, `?LearnLayout`), never application code, and does
+    not occur in a production build. Filtered by exact shape rather than by ignoring page
+    errors wholesale, so a real one still fails the run."""
+    return "cannot have a negative time stamp" not in message
+
+
+def _out(line):
+    """Windows consoles are cp1252. Page text and framework messages can carry characters
+    it cannot encode — a zero-width space in one detail string used to raise
+    UnicodeEncodeError inside the reporter, turning a result into a stack trace and hiding
+    which check had actually failed. Encode defensively so the report always prints."""
+    enc = sys.stdout.encoding or "utf-8"
+    print(line.encode(enc, "replace").decode(enc))
+
+
 def check(name, cond, detail=""):
     results.append((name, bool(cond), detail))
-    print(("PASS  " if cond else "FAIL  ") + name + (f"  -- {detail}" if detail else ""))
+    _out(("PASS  " if cond else "FAIL  ") + name + (f"  -- {detail}" if detail else ""))
 
 
 def make_png(path, w=600, h=400, rgb=(40, 40, 46)):
@@ -62,7 +80,7 @@ with sync_playwright() as p:
     # ---------- the redesign ----------
     actx = b.new_context(viewport={"width": 1440, "height": 900})
     anon = actx.new_page()
-    anon.on("pageerror", lambda e: errs.append(str(e)))
+    anon.on("pageerror", lambda e: errs.append(str(e)) if app_error(str(e)) else None)
     anon.goto(BASE, wait_until="networkidle")
     anon.wait_for_selector("main h1", timeout=20000)
 
@@ -163,7 +181,13 @@ with sync_playwright() as p:
     check("cleaned up", ins.url.rstrip("/").endswith("/studio"), ins.url)
     ictx.close()
 
-    # ---------- a student cannot upload ----------
+    # ---------- who may upload ----------
+    #
+    # Students used to be refused here, on the grounds that only authors put files on the
+    # server. Profile pictures changed that: every account has an avatar, so every
+    # signed-in role needs upload. The boundary moved from role to authentication, and
+    # these two checks are what pin the new line down — the widening is in *who*, not in
+    # *what*, so the type and size limits above still apply to everybody.
     sctx = b.new_context()
     stu = login(sctx, "student@lms.test")
     status = stu.evaluate("""async () => {
@@ -172,7 +196,28 @@ with sync_playwright() as p:
         const r = await fetch('/api/upload', { method: 'POST', body: fd });
         return r.status;
     }""")
-    check("student upload refused", status in (403, 400, 415), str(status))
+    check("a signed-in student may upload, for their avatar", status == 200, str(status))
+
+    # A student is still held to the same allowlist as an author.
+    bad = stu.evaluate("""async () => {
+        const fd = new FormData();
+        fd.append('file', new File(['#!/bin/sh'], 'x.sh', { type: 'application/x-sh' }));
+        const r = await fetch('/api/upload', { method: 'POST', body: fd });
+        return r.status;
+    }""")
+    check("a non-image is still refused for a student", bad in (400, 415), str(bad))
+
+    # Anonymous upload would be a free file host, so it stays closed.
+    anon_ctx = b.new_context()
+    anon_up = anon_ctx.new_page()
+    anon_up.goto(BASE, wait_until="networkidle")
+    anon_status = anon_up.evaluate("""async () => {
+        const fd = new FormData();
+        fd.append('file', new File([new Uint8Array([137,80,78,71])], 'x.png', { type: 'image/png' }));
+        const r = await fetch('/api/upload', { method: 'POST', body: fd });
+        return r.status;
+    }""")
+    check("signed-out upload is refused", anon_status in (401, 403), str(anon_status))
     sctx.close()
 
     # mobile

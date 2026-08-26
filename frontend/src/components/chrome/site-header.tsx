@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { SignOutIcon } from '@phosphor-icons/react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { Avatar } from '@/components/ui/avatar';
 import { NotificationBell } from './notification-bell';
 import { ButtonLink, Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
@@ -86,6 +87,15 @@ export function SiteHeader({
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   /**
+   * Where "Dashboard" goes.
+   *
+   * For an admin the admin panel *is* their dashboard, so the button skips the generic
+   * page rather than bouncing through a redirect the user can see in the address bar.
+   * `/dashboard` still redirects for anyone who types it, so the two cannot disagree.
+   */
+  const dashboardHref = user?.role === 'admin' ? '/admin' : '/dashboard';
+
+  /**
    * Links that only make sense for one role. Rendering them for everyone would put a
    * visitor one click from a page that would only bounce them to /forbidden.
    */
@@ -93,10 +103,9 @@ export function SiteHeader({
     user?.role === 'student'
       ? [{ href: '/my-courses', label: 'My courses' }]
       : user?.role === 'admin'
-        ? [
-            { href: '/studio', label: 'Studio' },
-            { href: '/admin', label: 'Admin' },
-          ]
+        ? // No separate "Admin" link: the Dashboard button already lands there, and two
+          // controls to the same page is one more thing to scan past.
+          [{ href: '/studio', label: 'Studio' }]
         : user?.role === 'content-manager' || user?.role === 'instructor'
           ? [{ href: '/studio', label: 'Studio' }]
           : [];
@@ -109,8 +118,11 @@ export function SiteHeader({
           // Detached from the top edge and floating on a blurred pane. The bar reads as
           // an object over the page rather than a strip welded to the viewport, which is
           // the difference between "modern header" and "toolbar".
-          'mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 rounded-card',
-          'border border-line pl-5 pr-2.5',
+          'mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-2 rounded-card sm:gap-4',
+          // Tighter padding on a phone. "CourseCatalyst" is a long wordmark and the bar
+          // also carries the bell, the theme toggle, the avatar and the menu button; at
+          // 375px the old 20px inset was enough to push the row into a horizontal scroll.
+          'border border-line pl-3.5 pr-2 sm:pl-5 sm:pr-2.5',
           // Glass, properly: a tinted pane rather than a faded box. Saturation is pushed
           // past 100% because a plain blur desaturates whatever is behind it and leaves
           // the pill looking grey; lifting it back is what makes the pane read as glass
@@ -136,9 +148,9 @@ export function SiteHeader({
             aria-hidden
             className="flex size-7 items-center justify-center rounded-control bg-accent font-mono text-[13px] font-bold leading-none text-accent-ink-on"
           >
-            K
+            C
           </span>
-          <span className="font-serif text-lg tracking-tight">Kiln</span>
+          <span className="font-serif text-base tracking-tight sm:text-lg">CourseCatalyst</span>
         </Link>
 
         <div className="hidden items-center gap-1 md:flex">
@@ -192,7 +204,7 @@ export function SiteHeader({
                   ) : null}
                 </Link>
               ))}
-              <ButtonLink href="/dashboard" variant="outline" size="sm">
+              <ButtonLink href={dashboardHref} variant="outline" size="sm">
                 Dashboard
               </ButtonLink>
               <button
@@ -215,6 +227,37 @@ export function SiteHeader({
               </ButtonLink>
             </div>
           )}
+
+          {/*
+            The avatar sits outside the `md:flex` cluster on purpose, so it is present on a
+            phone as well — the whole point of a profile picture in a header is that it is
+            the one persistent marker of who you are signed in as, and hiding it at the
+            breakpoint where the rest of the nav collapses would remove it exactly where
+            the other cues are already gone.
+
+            A plain link rather than a dropdown: one click reaches the profile, which is
+            where "edit profile" lives anyway.
+          */}
+          {user ? (
+            <Link
+              href={`/u/${user.username}`}
+              aria-label={`Your profile, ${user.displayName || user.username}`}
+              className={cn(
+                'ml-1 cursor-pointer rounded-full transition-[box-shadow,transform] duration-200',
+                '[transition-timing-function:var(--ease-settle)] hover:scale-[1.04]',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-raised)]',
+                isActive(`/u/${user.username}`)
+                  ? 'ring-2 ring-accent ring-offset-2 ring-offset-[var(--surface-raised)]'
+                  : 'hover:ring-2 hover:ring-line-strong hover:ring-offset-2 hover:ring-offset-[var(--surface-raised)]'
+              )}
+            >
+              <Avatar
+                src={user.avatarUrl}
+                name={user.displayName || user.username}
+                size="sm"
+              />
+            </Link>
+          ) : null}
 
           <MenuButton open={menuOpen} onToggle={() => setMenuOpen((open) => !open)} />
         </div>
@@ -256,11 +299,34 @@ export function SiteHeader({
               >
                 {user ? (
                   <>
-                    <p className="text-sm text-text-muted">
-                      Signed in as {user.username}
-                      {user.role ? ` (${ROLE_LABELS[user.role]})` : ''}
-                    </p>
-                    <ButtonLink href="/dashboard" variant="solid" size="lg" withArrow onClick={closeMenu}>
+                    {/* The same identity marker as the bar above, at a size that works as
+                        a tap target rather than as a glyph. */}
+                    <Link
+                      href={`/u/${user.username}`}
+                      onClick={closeMenu}
+                      className="flex items-center gap-3 rounded-card py-1 transition-colors hover:text-text"
+                    >
+                      <Avatar
+                        src={user.avatarUrl}
+                        name={user.displayName || user.username}
+                        size="md"
+                      />
+                      <span className="flex flex-col">
+                        <span className="text-base font-medium text-text">
+                          {user.displayName || user.username}
+                        </span>
+                        <span className="text-sm text-text-muted">
+                          {user.role ? ROLE_LABELS[user.role] : 'View profile'}
+                        </span>
+                      </span>
+                    </Link>
+                    <ButtonLink
+                      href={dashboardHref}
+                      variant="solid"
+                      size="lg"
+                      withArrow
+                      onClick={closeMenu}
+                    >
                       Dashboard
                     </ButtonLink>
                     <Button variant="outline" size="lg" onClick={signOut} loading={signingOut}>

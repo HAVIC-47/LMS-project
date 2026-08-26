@@ -7,6 +7,24 @@ SHOTS=r"C:\Users\faisa\AppData\Local\Temp\claude\f--all-PROJECTS-CPS-peiject\e1b
 PW="Passw0rd!23"
 results=[]
 
+def app_error(message: str) -> bool:
+    """Next's dev-mode instrumentation emits `Failed to execute 'measure' on 'Performance'`
+    when a route redirects or streams: the span ends up with a negative duration. It names
+    a framework internal (`?ProfilePage`, `?LearnLayout`), never application code, and does
+    not occur in a production build. Filtered by exact shape rather than by ignoring page
+    errors wholesale, so a real one still fails the run."""
+    return "cannot have a negative time stamp" not in message
+
+
+def _out(line):
+    """Windows consoles are cp1252. Page text and framework messages can carry characters
+    it cannot encode — a zero-width space in one detail string used to raise
+    UnicodeEncodeError inside the reporter, turning a result into a stack trace and hiding
+    which check had actually failed. Encode defensively so the report always prints."""
+    enc = sys.stdout.encoding or "utf-8"
+    print(line.encode(enc, "replace").decode(enc))
+
+
 def check(name, cond, detail=""):
     results.append((name,bool(cond),detail))
     print(("PASS  " if cond else "FAIL  ")+name+(f"  -- {detail}" if detail else ""))
@@ -24,7 +42,7 @@ with sync_playwright() as p:
     ctx=b.new_context(viewport={"width":1440,"height":900})
     page=ctx.new_page()
     errs=[]
-    page.on("pageerror", lambda e: errs.append(str(e)))
+    page.on("pageerror", lambda e: errs.append(str(e)) if app_error(str(e)) else None)
 
     login(page,"student@lms.test")
 
@@ -143,7 +161,7 @@ with sync_playwright() as p:
 
 if errs:
     print("\nPage errors:")
-    for e in errs[:6]: print("  ", e[:180])
+    for e in errs[:6]: _out("   " + e[:180])
 
 ok=sum(1 for _,c,_ in results if c)
 print(f"\n{'='*60}\n{ok}/{len(results)} passed\n{'='*60}")

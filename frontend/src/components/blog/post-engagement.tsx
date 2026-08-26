@@ -7,6 +7,7 @@ import { ChatCircleIcon, HeartIcon, PaperPlaneTiltIcon, TrashIcon } from '@phosp
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/field';
 import { cn } from '@/lib/cn';
+import { Avatar } from '@/components/ui/avatar';
 
 /**
  * Likes and the comment thread for one post.
@@ -22,7 +23,12 @@ type Comment = {
   body: string;
   createdAt: string;
   editedAt: string | null;
-  author: { id: number; username: string } | null;
+  author: {
+    id: number;
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
   replies?: Comment[];
 };
 
@@ -236,8 +242,26 @@ function CommentRow({
 
   return (
     <article className="flex flex-col gap-3">
-      <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="font-medium text-text">{comment.author?.username ?? 'Deleted user'}</span>
+      {/* `items-center` rather than `items-baseline`: an avatar has no text baseline to
+          sit on, so baseline alignment drops it below the name. */}
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <Avatar
+          src={comment.author?.avatarUrl}
+          name={comment.author?.displayName || comment.author?.username || '?'}
+          size="sm"
+        />
+        {/* A comment whose author is gone has no profile to point at, so the name stays
+            plain text rather than becoming a link to a 404. */}
+        {comment.author ? (
+          <Link
+            href={`/u/${comment.author.username}`}
+            className="font-medium text-text underline decoration-transparent underline-offset-4 transition-colors hover:decoration-line-strong"
+          >
+            {comment.author.displayName || comment.author.username}
+          </Link>
+        ) : (
+          <span className="font-medium text-text-subtle">Deleted user</span>
+        )}
         <span className="microlabel">{timeAgo(comment.createdAt)}</span>
         {comment.editedAt ? <span className="microlabel">edited</span> : null}
       </header>

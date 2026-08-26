@@ -11,6 +11,7 @@ import {
 import { findCourseByDocumentId, isEnrolled, linkUserRelation, readRelationInput } from '../../../utils/resolve';
 import { sanitizeCourseResponse } from '../../../utils/sanitize';
 import { computeCourseProgress } from '../../../utils/progress';
+import { buildCourseInsights } from './course-insights';
 import { findEnrolledStudentIds, notifyMany } from '../../../utils/notify';
 
 /**
@@ -383,6 +384,29 @@ export default factories.createCoreController('api::course.course', ({ strapi })
     };
   },
 
+  /**
+   * GET /api/courses/:id/insights
+   *
+   * The staff view of one course: who is enrolled, how far each has got, and what they
+   * answered on every quiz. The shaping lives in `course-insights.ts`; what belongs here
+   * is the decision about who may ask. `owns-course` has already run, and this repeats the
+   * ownership check for the same reason every other write does — a policy is one edit away
+   * from being removed from a route file.
+   */
+  async insights(ctx) {
+    const user = ctx.state.user as AuthUser;
+    const course = await findCourseByDocumentId(strapi, ctx.params.id);
+
+    if (!course) {
+      return ctx.notFound('Course not found');
+    }
+
+    if (!canManageCourse(user, course)) {
+      return ctx.forbidden('You cannot view insights for this course');
+    }
+
+    return { data: await buildCourseInsights(strapi, course) };
+  },
   /**
    * GET /api/courses/mine
    *

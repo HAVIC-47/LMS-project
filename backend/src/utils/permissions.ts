@@ -21,6 +21,9 @@ export type AuthUser = {
   documentId?: string;
   username?: string;
   email?: string;
+  /** Profile fields, present on `ctx.state.user` because the row is loaded whole. */
+  displayName?: string | null;
+  avatarUrl?: string | null;
   role?: { id: number; name: string; type: string } | null;
 };
 

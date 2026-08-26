@@ -92,7 +92,50 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
    * for the admin panel to see them at all.
    */
   async users(ctx: Context) {
+    /**
+     * Search and filters are applied in the query rather than in the browser.
+     *
+     * Filtering a list the client already holds is fine until the list is the whole user
+     * table, at which point every admin page load ships every account to the browser just
+     * so it can hide most of them. Doing it here also means the filters keep working when
+     * the table outgrows one page.
+     *
+     * `$containsi` is case-insensitive, so searching "Dana" finds "dana@example.com".
+     */
+    const query = ctx.query as {
+      search?: string;
+      role?: string;
+      status?: string;
+    };
+
+    const search = typeof query.search === 'string' ? query.search.trim() : '';
+    const role = typeof query.role === 'string' ? query.role.trim() : '';
+    const status = typeof query.status === 'string' ? query.status.trim() : '';
+
+    const filters: Record<string, unknown>[] = [];
+
+    if (search) {
+      filters.push({
+        $or: [
+          { username: { $containsi: search } },
+          { email: { $containsi: search } },
+          { displayName: { $containsi: search } },
+        ],
+      });
+    }
+
+    // Checked against the known set rather than passed through: an unknown role would
+    // silently match nothing, which looks identical to "no users" and is not.
+    if (role && MANAGEABLE_ROLES.includes(role as RoleType)) {
+      filters.push({ role: { type: role } });
+    }
+
+    if (status === 'blocked') filters.push({ blocked: true });
+    if (status === 'active') filters.push({ blocked: false });
+    if (status === 'unconfirmed') filters.push({ confirmed: false });
+
     const users = await strapi.db.query('plugin::users-permissions.user').findMany({
+      where: filters.length ? { $and: filters } : {},
       populate: { role: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -120,6 +163,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
             confirmed: boolean;
             blocked: boolean;
             createdAt: string;
+            displayName?: string | null;
+            avatarUrl?: string | null;
             role?: { id: number; name: string; type: string } | null;
           }) => ({
             id: user.id,
@@ -129,6 +174,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
             confirmed: user.confirmed,
             blocked: user.blocked,
             createdAt: user.createdAt,
+            displayName: user.displayName ?? null,
+            avatarUrl: user.avatarUrl ?? null,
             role: user.role ? { id: user.role.id, name: user.role.name, type: user.role.type } : null,
             ownedCourses: ownedByUser.get(user.id) ?? 0,
             enrollments: await strapi.db

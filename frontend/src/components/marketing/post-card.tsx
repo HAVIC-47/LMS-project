@@ -69,7 +69,7 @@ export function PostCard({
                 : '(max-width: 768px) 100vw, 33vw'
           }
           priority={priority}
-          fallback={<span className="microlabel">Kiln</span>}
+          fallback={<span className="microlabel">CourseCatalyst</span>}
           className="transition-transform duration-500 [transition-timing-function:var(--ease-settle)] group-hover:scale-[1.04]"
         />
 

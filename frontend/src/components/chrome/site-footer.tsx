@@ -18,7 +18,7 @@ export function SiteFooter() {
           <div className="flex max-w-sm flex-col gap-3">
             <Link href="/" className="flex items-center gap-2 text-base font-semibold text-text">
               <span aria-hidden className="size-2.5 rounded-control bg-accent" />
-              Kiln
+              CourseCatalyst
             </Link>
             <p className="text-sm leading-relaxed text-text-muted">
               Short courses with real lessons, progress that reflects what you actually finished,
@@ -50,7 +50,7 @@ export function SiteFooter() {
         </div>
 
         <p className="border-t border-line pt-8 text-sm text-text-subtle">
-          {year} Kiln. Built as a project submission.
+          {year} CourseCatalyst. Built as a project submission.
         </p>
       </Container>
     </footer>

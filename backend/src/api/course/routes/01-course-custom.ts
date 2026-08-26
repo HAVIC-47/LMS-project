@@ -37,6 +37,23 @@ export default {
       },
     },
     {
+      // Everything the per-course staff view needs, in one request. Split across the
+      // existing endpoints it would be one call for progress, one per quiz for attempts
+      // and one for the syllabus — a waterfall that grows with the number of quizzes.
+      method: 'GET',
+      path: '/courses/:id/insights',
+      handler: 'course.insights',
+      config: {
+        policies: [
+          {
+            name: 'global::has-role',
+            config: { roles: [ROLES.ADMIN, ROLES.CONTENT_MANAGER, ROLES.INSTRUCTOR] },
+          },
+          { name: 'global::owns-course', config: { subject: 'course' } },
+        ],
+      },
+    },
+    {
       method: 'GET',
       path: '/courses/:id/students-progress',
       handler: 'course.studentsProgress',

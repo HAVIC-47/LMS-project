@@ -75,7 +75,17 @@ export default async function CourseDetailPage({ params }: PageProps) {
             ) : null}
 
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-text-muted">
-              {course.instructor ? <span>Taught by {course.instructor.username}</span> : null}
+              {course.instructor ? (
+                <span>
+                  Taught by{' '}
+                  <Link
+                    href={`/u/${course.instructor.username}`}
+                    className="text-text underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-text"
+                  >
+                    {course.instructor.username}
+                  </Link>
+                </span>
+              ) : null}
               <span>
                 <span className="font-mono tabular-nums text-text">{lessons.length}</span>{' '}
                 {lessons.length === 1 ? 'lesson' : 'lessons'}

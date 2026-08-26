@@ -28,6 +28,79 @@ export type SessionUser = {
   username: string;
   email: string;
   role: RoleType | null;
+  /**
+   * Profile fields ride along with the session because the header draws the avatar on
+   * every page. Nullable because an account that has never visited the settings screen
+   * has none of them.
+   */
+  displayName: string | null;
+  avatarUrl: string | null;
+  bio: string | null;
+  website: string | null;
+};
+
+export type ProfileCourse = {
+  documentId: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  level: CourseLevel;
+  coverImageUrl: string | null;
+  isPublished: boolean;
+  lessonCount: number;
+};
+
+export type ProfilePost = {
+  documentId: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  coverImageUrl: string | null;
+  publishedAt: string | null;
+  isPublished: boolean;
+};
+
+/**
+ * A public profile.
+ *
+ * `isSelf` is decided by the backend from the token, never by comparing usernames here —
+ * the client has no business being the authority on who you are. Anything the backend
+ * withholds from a visitor arrives as `null` or as a zero count, so this type is the same
+ * whether you are looking at your own profile or somebody else's.
+ */
+export type Profile = {
+  username: string;
+  displayName: string | null;
+  bio: string | null;
+  avatarUrl: string | null;
+  website: string | null;
+  role: RoleType | null;
+  roleName: string | null;
+  joinedAt: string;
+  isSelf: boolean;
+  /** Only ever populated for the account holder. */
+  email: string | null;
+  teaching: {
+    publishedCourses: number;
+    totalCourses: number;
+    lessons: number;
+    quizzes: number;
+    students: number;
+    courses: ProfileCourse[];
+  };
+  writing: {
+    publishedPosts: number;
+    totalPosts: number;
+    draftPosts: number;
+    posts: ProfilePost[];
+  };
+  /** Self only: nobody else needs to know how far along someone is. */
+  learning: {
+    enrolledCourses: number;
+    lessonsCompleted: number;
+    quizzesTaken: number;
+    quizzesPassed: number;
+  } | null;
 };
 
 export type CourseLevel = 'beginner' | 'intermediate' | 'advanced';

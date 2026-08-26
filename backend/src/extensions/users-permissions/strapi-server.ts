@@ -45,6 +45,13 @@ export default (plugin: {
       confirmed: user.confirmed,
       blocked: user.blocked,
       createdAt: user.createdAt,
+      // Profile fields travel with the session because the header renders the avatar on
+      // every page. Fetching them separately would mean a second round trip on each
+      // navigation to draw one image.
+      displayName: user.displayName ?? null,
+      avatarUrl: user.avatarUrl ?? null,
+      bio: user.bio ?? null,
+      website: user.website ?? null,
       role: user.role
         ? { id: user.role.id, name: user.role.name, type: user.role.type }
         : null,

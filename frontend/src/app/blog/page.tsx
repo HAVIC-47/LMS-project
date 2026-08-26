@@ -94,7 +94,12 @@ export default async function BlogPage() {
                       // Only `flex-grow` transitions. Animating `flex` wholesale would
                       // drag `flex-basis` along with it and fight the layout.
                       'lg:motion-safe:transition-[flex-grow] lg:motion-safe:duration-500',
-                      'lg:[transition-timing-function:var(--ease-settle)]',
+                      // `ease-[…]`, not `[transition-timing-function:…]`. The raw property
+                      // is emitted alongside the one `transition-[flex-grow]` writes for
+                      // itself, at equal specificity — so which one wins comes down to
+                      // rule order, and it was losing. The `ease-*` utility sets the
+                      // variable `transition-*` reads, so it cannot be overridden by it.
+                      'lg:ease-[var(--ease-settle)]',
                       // The expansion itself. Tailwind compiles `hover:` to
                       // `@media (hover: hover)`, so a touch screen never gets a card stuck
                       // open, and `motion-safe` keeps it out of reduced-motion entirely

@@ -23,8 +23,8 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Kiln - learn the parts that stick',
-    template: '%s | Kiln',
+    default: 'CourseCatalyst - learn the parts that stick',
+    template: '%s | CourseCatalyst',
   },
   description:
     'Short courses with real lessons, honest progress tracking and quizzes that grade themselves.',

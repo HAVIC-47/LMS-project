@@ -20,7 +20,17 @@ import { NextResponse, type NextRequest } from 'next/server';
  *     visitor a dashboard shell that would only fail once its data arrived.
  */
 
-const PROTECTED_PREFIXES = ['/dashboard', '/my-courses', '/learn', '/studio', '/admin', '/account'];
+const PROTECTED_PREFIXES = [
+  '/dashboard',
+  '/my-courses',
+  '/learn',
+  '/studio',
+  '/admin',
+  '/account',
+  // Editing a profile needs a session. Public profiles at /u/:username deliberately do
+  // not — the whole point of them is that they can be read signed out.
+  '/settings',
+];
 
 const AUTH_PAGES = ['/login', '/signup'];
 

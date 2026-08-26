@@ -13,6 +13,12 @@ export default {
       config: { policies: WRITERS_ONLY },
     },
     {
+      method: 'GET',
+      path: '/blog-posts/insights',
+      handler: 'blog-post.insights',
+      config: { policies: WRITERS_ONLY },
+    },
+    {
       method: 'POST',
       path: '/blog-posts/:id/publish',
       handler: 'blog-post.publish',

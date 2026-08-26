@@ -3,8 +3,72 @@ import { factories } from '@strapi/strapi';
 import { canManageBlogPost, isAdmin, isContentManager, type AuthUser } from '../../../utils/permissions';
 import { excerpt, notifyMany } from '../../../utils/notify';
 import { linkUserRelation } from '../../../utils/resolve';
+import { buildBlogInsights } from './blog-insights';
 
 const canSeeDrafts = (user?: AuthUser) => isAdmin(user) || isContentManager(user);
+
+/**
+ * Attaches the post author as an `author` field.
+ *
+ * The same problem `attachInstructors` solves for courses, and the same fix. `?populate=author`
+ * comes back empty because the content API drops any relation whose target the caller
+ * cannot `find`, and no application role holds `plugin::users-permissions.user.find`.
+ *
+ * Without this a byline is unrenderable on any public page: the author simply is not in
+ * the payload. Projected down to the four fields a byline and an avatar need, and no more
+ * — the row it comes from also holds the password hash.
+ */
+const attachAuthors = async (
+  strapi: Core.Strapi,
+  response: { data?: unknown }
+): Promise<{ data?: unknown }> => {
+  if (!response || typeof response !== 'object' || !response.data) return response;
+
+  const entries = (Array.isArray(response.data) ? response.data : [response.data]) as {
+    documentId?: string;
+  }[];
+
+  const documentIds = entries.map((entry) => entry?.documentId).filter(Boolean) as string[];
+
+  if (documentIds.length === 0) return response;
+
+  type AuthorRow = {
+    documentId: string;
+    author?: {
+      id: number;
+      username: string;
+      displayName?: string | null;
+      avatarUrl?: string | null;
+    } | null;
+  };
+
+  const rows = await strapi.db.query('api::blog-post.blog-post').findMany({
+    where: { documentId: { $in: documentIds } },
+    populate: { author: true },
+  });
+
+  const byDocument = new Map(
+    (rows as AuthorRow[]).map((row) => [
+      row.documentId,
+      row.author
+        ? {
+            id: row.author.id,
+            username: row.author.username,
+            displayName: row.author.displayName ?? null,
+            avatarUrl: row.author.avatarUrl ?? null,
+          }
+        : null,
+    ])
+  );
+
+  const decorate = (entry: { documentId?: string }) =>
+    entry?.documentId ? { ...entry, author: byDocument.get(entry.documentId) ?? null } : entry;
+
+  return {
+    ...response,
+    data: Array.isArray(response.data) ? entries.map(decorate) : decorate(entries[0]),
+  };
+};
 
 export default factories.createCoreController('api::blog-post.blog-post', ({ strapi }) => ({
   /**
@@ -22,7 +86,7 @@ export default factories.createCoreController('api::blog-post.blog-post', ({ str
       ctx.query = { ...ctx.query, status: 'published' };
     }
 
-    return super.find(ctx);
+    return attachAuthors(strapi, await super.find(ctx));
   },
 
   async findOne(ctx) {
@@ -32,7 +96,7 @@ export default factories.createCoreController('api::blog-post.blog-post', ({ str
       ctx.query = { ...ctx.query, status: 'published' };
     }
 
-    return super.findOne(ctx);
+    return attachAuthors(strapi, await super.findOne(ctx));
   },
 
   /**
@@ -148,6 +212,18 @@ export default factories.createCoreController('api::blog-post.blog-post', ({ str
     return super.delete(ctx);
   },
 
+  /**
+   * GET /api/blog-posts/insights
+   *
+   * The Content Manager dashboard: their own posts with engagement attached, plus the
+   * totals and a publishing timeline. An admin sees the whole desk, which is the same
+   * scoping rule `mine` already uses.
+   */
+  async insights(ctx) {
+    const user = ctx.state.user as AuthUser;
+
+    return { data: await buildBlogInsights(strapi, isAdmin(user) ? null : user.id) };
+  },
   /**
    * GET /api/blog-posts/mine
    *

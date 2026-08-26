@@ -64,29 +64,43 @@ export default async function StudioPage() {
         ) : (
           <div className="flex flex-col">
             {courses.map((course) => (
-              <Link
+              <div
                 key={course.documentId}
-                href={`/studio/courses/${course.documentId}`}
-                className="group flex flex-wrap items-center justify-between gap-4 border-b border-line py-5 transition-colors duration-200 first:border-t hover:bg-surface"
+                className="flex flex-col border-b border-line first:border-t"
               >
-                <div className="flex min-w-0 flex-col gap-1.5">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <span className="font-medium text-text transition-colors group-hover:text-accent-text">
-                      {course.title}
-                    </span>
-                    {course.isPublished ? null : <Badge tone="neutral">Draft</Badge>}
+                <Link
+                  href={`/studio/courses/${course.documentId}`}
+                  className="group flex flex-wrap items-center justify-between gap-4 py-5 transition-colors duration-200 hover:bg-surface"
+                >
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <span className="font-medium text-text transition-colors group-hover:text-accent-text">
+                        {course.title}
+                      </span>
+                      {course.isPublished ? null : <Badge tone="neutral">Draft</Badge>}
+                    </div>
+                    {course.owner ? (
+                      <span className="microlabel">{course.owner.username}</span>
+                    ) : null}
                   </div>
-                  {course.owner ? (
-                    <span className="microlabel">{course.owner.username}</span>
-                  ) : null}
-                </div>
 
-                <dl className="flex items-center gap-6">
-                  <Count value={course.lessonCount} label="lessons" />
-                  <Count value={course.quizCount} label="quizzes" />
-                  <Count value={course.enrollmentCount} label="enrolled" />
-                </dl>
-              </Link>
+                  <dl className="flex items-center gap-6">
+                    <Count value={course.lessonCount} label="lessons" />
+                    <Count value={course.quizCount} label="quizzes" />
+                    <Count value={course.enrollmentCount} label="enrolled" />
+                  </dl>
+                </Link>
+
+                {/* Outside the row link, not inside it: an anchor nested in an anchor is
+                  invalid markup and the browser resolves it by dropping one of them.
+                  The studio row edits the course; this goes to the cohort. */}
+                <Link
+                  href={`/studio/courses/${course.documentId}/insights`}
+                  className="w-fit pb-5 text-sm font-medium text-accent-text underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-text"
+                >
+                  View student progress
+                </Link>
+              </div>
             ))}
           </div>
         )}

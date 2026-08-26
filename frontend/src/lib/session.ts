@@ -50,6 +50,10 @@ type StrapiMe = {
   username: string;
   email: string;
   role?: { type?: string } | null;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+  bio?: string | null;
+  website?: string | null;
 };
 
 const asRole = (value: string | undefined | null): RoleType | null => {
@@ -82,6 +86,10 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     username: me.username,
     email: me.email,
     role: asRole(me.role?.type),
+    displayName: me.displayName ?? null,
+    avatarUrl: me.avatarUrl ?? null,
+    bio: me.bio ?? null,
+    website: me.website ?? null,
   };
 }
 

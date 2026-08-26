@@ -29,6 +29,8 @@ const PLATFORM = 'api::platform.platform';
 const COMMENT = 'api::comment.comment';
 const POST_LIKE = 'api::post-like.post-like';
 const NOTIFICATION = 'api::notification.notification';
+const PROFILE = 'api::profile.profile';
+const LEARNER = 'api::learner.learner';
 
 const CRUD = ['find', 'findOne', 'create', 'update', 'delete'];
 const READ = ['find', 'findOne'];
@@ -38,7 +40,22 @@ const COURSE_READ = [...READ, 'bySlug'];
 const actions = (uid: string, names: string[]) => names.map((name) => `${uid}.${name}`);
 
 /**
- * Discussion and notifications are the same for every signed-in role. A blog the
+ * Uploading an image.
+ *
+ * This used to be withheld from students, on the grounds that only authors need to put
+ * files on the server. Avatars changed that: every account has a profile picture, so every
+ * signed-in role needs it. The public role still does not — an anonymous upload endpoint
+ * is a free file host.
+ *
+ * What keeps that acceptable is that the widening is only in *who*, not in *what*: the
+ * frontend proxy validates the MIME type against an allowlist and caps the size before a
+ * byte is forwarded, and `destroy` remains absent, so no one can delete anyone else's file
+ * by guessing an id. Replacing an image points the record at a new file instead.
+ */
+export const UPLOAD_ACTIONS = ['plugin::upload.content-api.upload'];
+
+/**
+ * Discussion, notifications and profiles are the same for every signed-in role. A blog the
  * platform's own instructors cannot reply on is not a discussion, and every role has an
  * inbox, so these are shared rather than repeated four times.
  */
@@ -46,36 +63,30 @@ const PARTICIPATION_ACTIONS = [
   ...actions(COMMENT, ['create', 'update', 'delete', 'forPost']),
   ...actions(POST_LIKE, ['forPost', 'toggle']),
   ...actions(NOTIFICATION, ['me', 'unreadCount', 'markRead', 'markAllRead']),
+  // Everyone has a profile, so everyone may edit their own. `updateMe` takes the target
+  // from the token rather than the URL, which is what makes granting it to all four roles
+  // safe: there is no id to tamper with.
+  ...actions(PROFILE, ['show', 'updateMe']),
+  ...UPLOAD_ACTIONS,
 ];
-
-/**
- * Uploading a cover image.
- *
- * Only the roles that can author content get this. `upload` is a genuinely dangerous
- * permission to hand out: it accepts files onto the server's disk, so it is granted to the
- * three authoring roles and never to students or the public.
- *
- * `destroy` is deliberately absent. Deleting an upload by id would let one author remove
- * another author's cover, and nothing in the product needs it: replacing an image simply
- * points the record at a new file.
- */
-export const AUTHOR_UPLOAD_ACTIONS = ['plugin::upload.content-api.upload'];
 
 /** Everything an admin can reach — the union of every other role plus the admin panel. */
 const ADMIN_ACTIONS = [
-  ...actions(COURSE, [...CRUD, 'bySlug', 'mine', 'myProgress', 'studentsProgress']),
+  ...actions(COURSE, [...CRUD, 'bySlug', 'mine', 'myProgress', 'studentsProgress', 'insights']),
   ...actions(LESSON, CRUD),
   ...actions(QUIZ, [...CRUD, 'take']),
   ...actions(QUESTION, CRUD),
   ...actions(ENROLLMENT, CRUD),
   ...actions(PROGRESS, CRUD),
   ...actions(ATTEMPT, [...CRUD, 'forQuiz']),
-  ...actions(BLOG, [...CRUD, 'mine', 'publish', 'unpublish']),
+  ...actions(BLOG, [...CRUD, 'mine', 'insights', 'publish', 'unpublish']),
   ...actions(PLATFORM, ['stats', 'users', 'updateUserRole']),
+  ...actions(PROFILE, ['show', 'updateMe']),
+  ...actions(LEARNER, ['show']),
   ...actions(COMMENT, [...CRUD, 'forPost']),
   ...actions(POST_LIKE, [...CRUD, 'forPost', 'toggle']),
   ...actions(NOTIFICATION, [...CRUD, 'me', 'unreadCount', 'markRead', 'markAllRead']),
-  ...AUTHOR_UPLOAD_ACTIONS,
+  ...UPLOAD_ACTIONS,
 ];
 
 /**
@@ -84,14 +95,14 @@ const ADMIN_ACTIONS = [
  * roles ❌" row, enforced rather than merely hidden.
  */
 const CONTENT_MANAGER_ACTIONS = [
-  ...actions(COURSE, [...CRUD, 'bySlug', 'mine', 'studentsProgress']),
+  ...actions(COURSE, [...CRUD, 'bySlug', 'mine', 'studentsProgress', 'insights']),
+  ...actions(LEARNER, ['show']),
   ...actions(LESSON, CRUD),
   ...actions(QUIZ, [...CRUD, 'take']),
   ...actions(QUESTION, CRUD),
   ...actions(ATTEMPT, ['forQuiz']),
-  ...actions(BLOG, [...CRUD, 'mine', 'publish', 'unpublish']),
+  ...actions(BLOG, [...CRUD, 'mine', 'insights', 'publish', 'unpublish']),
   ...PARTICIPATION_ACTIONS,
-  ...AUTHOR_UPLOAD_ACTIONS,
 ];
 
 /**
@@ -100,14 +111,14 @@ const CONTENT_MANAGER_ACTIONS = [
  * posts ❌" — so no create/update/delete for BLOG here.
  */
 const INSTRUCTOR_ACTIONS = [
-  ...actions(COURSE, [...CRUD, 'bySlug', 'mine', 'studentsProgress']),
+  ...actions(COURSE, [...CRUD, 'bySlug', 'mine', 'studentsProgress', 'insights']),
+  ...actions(LEARNER, ['show']),
   ...actions(LESSON, CRUD),
   ...actions(QUIZ, [...CRUD, 'take']),
   ...actions(QUESTION, CRUD),
   ...actions(ATTEMPT, ['forQuiz']),
   ...actions(BLOG, READ),
   ...PARTICIPATION_ACTIONS,
-  ...AUTHOR_UPLOAD_ACTIONS,
 ];
 
 /**
@@ -138,6 +149,9 @@ const PUBLIC_ACTIONS = [
   // reads both. Writing still requires an account.
   ...actions(COMMENT, ['forPost']),
   ...actions(POST_LIKE, ['forPost']),
+  // Profiles are public: the point of them is that people can look each other up. Note
+  // `show` without `updateMe` — reading is open, writing needs an account.
+  ...actions(PROFILE, ['show']),
 ];
 
 export const PERMISSION_MAP: Record<RoleType | 'public', string[]> = {

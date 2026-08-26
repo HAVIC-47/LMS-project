@@ -21,7 +21,7 @@ type CommentRow = {
   createdAt: string;
   editedAt: string | null;
   postDocumentId: string;
-  author?: { id: number; username: string } | null;
+  author?: { id: number; username: string; displayName?: string | null; avatarUrl?: string | null } | null;
   parent?: { id: number; documentId: string } | null;
 };
 
@@ -32,7 +32,16 @@ const toPublicComment = (row: CommentRow) => ({
   createdAt: row.createdAt,
   editedAt: row.editedAt,
   parentId: row.parent?.documentId ?? null,
-  author: row.author ? { id: row.author.id, username: row.author.username } : null,
+  // Enough to draw the commenter and link to them. Still an explicit projection rather
+  // than a spread: this row comes from the user table, which also holds the password hash.
+  author: row.author
+    ? {
+        id: row.author.id,
+        username: row.author.username,
+        displayName: row.author.displayName ?? null,
+        avatarUrl: row.author.avatarUrl ?? null,
+      }
+    : null,
 });
 
 export default factories.createCoreController('api::comment.comment', ({ strapi }) => ({
@@ -173,7 +182,12 @@ export default factories.createCoreController('api::comment.comment', ({ strapi 
     return {
       data: toPublicComment({
         ...(created as unknown as CommentRow),
-        author: { id: user.id, username: user.username ?? '' },
+        author: {
+          id: user.id,
+          username: user.username ?? '',
+          displayName: user.displayName ?? null,
+          avatarUrl: user.avatarUrl ?? null,
+        },
         parent: parent ? { id: parent.id, documentId: parent.documentId } : null,
       }),
     };

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CheckIcon, WarningCircleIcon } from '@phosphor-icons/react';
 import { FormError } from '@/components/ui/field';
@@ -73,7 +74,15 @@ export function UserTable({ users, currentUserId }: { users: PlatformUser[]; cur
           >
             <div className="flex min-w-0 flex-col gap-0.5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium text-text">{user.username}</span>
+                {/* Straight to their progress record. An admin scanning the user list is
+                    usually there because of one person; this saves finding a course they
+                    happen to be enrolled in first. */}
+                <Link
+                  href={`/studio/students/${user.id}`}
+                  className="font-medium text-text underline decoration-transparent underline-offset-4 transition-colors hover:decoration-line-strong"
+                >
+                  {user.username}
+                </Link>
                 {user.id === currentUserId ? <span className="microlabel">you</span> : null}
                 {user.blocked ? (
                   <span className="microlabel text-danger">blocked</span>
