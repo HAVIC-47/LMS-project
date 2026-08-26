@@ -141,7 +141,18 @@ export default async function CourseInsightsPage({ params }: Props) {
         </div>
 
         <section className="flex flex-col gap-5">
-          <h2 className="font-serif text-2xl">Students</h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-4">
+            <h2 className="font-serif text-2xl">Students</h2>
+            {summary.students > 0 ? (
+              <ButtonLink
+                href={`/api/export/course/${id}/students`}
+                variant="outline"
+                size="sm"
+              >
+                Export CSV
+              </ButtonLink>
+            ) : null}
+          </div>
           <p className="max-w-[62ch] text-text-muted">
             Click a student to open their full record: every course they are enrolled in,
             the individual lessons they have finished, and every quiz answer.

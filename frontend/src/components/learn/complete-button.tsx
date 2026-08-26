@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRightIcon, CheckIcon } from '@phosphor-icons/react';
+import { ArrowRightIcon, CheckIcon, SealCheckIcon } from '@phosphor-icons/react';
 import { Button, ButtonLink } from '@/components/ui/button';
 import { FormError } from '@/components/ui/field';
 
@@ -27,6 +27,7 @@ export function CompleteButton({
 }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [certificate, setCertificate] = useState<{ serial: string } | null>(null);
   const router = useRouter();
 
   const toggle = async () => {
@@ -40,12 +41,16 @@ export function CompleteButton({
         body: JSON.stringify({ lessonId, completed: !completed }),
       });
 
+      const data = await response.json().catch(() => null);
+
       if (!response.ok) {
-        const data = await response.json().catch(() => null);
         setError(data?.error ?? 'Could not save your progress.');
         return;
       }
 
+      // The API returns a certificate on the completion that earns one. It was being
+      // discarded, so a student could finish a course and be told nothing at all.
+      setCertificate(data?.data?.certificate ?? null);
       router.refresh();
     } catch {
       setError('Could not reach the server. Check your connection and try again.');
@@ -56,6 +61,26 @@ export function CompleteButton({
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Shown above the buttons, not below the error slot: this is the best thing that
+          happens in the product and it should not appear underneath the row it belongs to. */}
+      {certificate ? (
+        <div className="flex flex-col gap-2 rounded-card border border-accent bg-accent-soft p-4">
+          <span className="flex items-center gap-2">
+            <SealCheckIcon size={17} weight="fill" aria-hidden className="text-accent-text" />
+            <span className="microlabel">Course complete</span>
+          </span>
+          <p className="text-sm text-text">
+            That was the last lesson — your certificate has been issued.
+          </p>
+          <a
+            href={`/certificates/${certificate.serial}`}
+            className="w-fit text-sm font-medium text-accent-text underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-text"
+          >
+            View certificate {certificate.serial}
+          </a>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-3">
         {completed ? (
           <>

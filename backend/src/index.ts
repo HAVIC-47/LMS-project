@@ -7,6 +7,7 @@ import {
 } from './bootstrap/roles';
 import { seedDemoData } from './bootstrap/seed';
 import { seedCatalog } from './bootstrap/catalog';
+import { backfillQuizAttemptLimits } from './bootstrap/backfill';
 
 export default {
   register(/* { strapi }: { strapi: Core.Strapi } */) {},
@@ -48,6 +49,11 @@ export default {
         strapi.log.error(`[lms] catalog seed failed: ${(error as Error).message}`);
       }
     }
+
+    // Columns added to an existing table are null on every row that predates them. This
+    // writes the intended default into those rows once, so the editor shows a real value
+    // instead of an empty field.
+    await backfillQuizAttemptLimits(strapi);
 
     await promoteBootstrapAdmin(strapi);
   },

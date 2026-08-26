@@ -62,9 +62,52 @@ with sync_playwright() as p:
 
     ins.goto(f"{BASE}/dashboard", wait_until="networkidle")
     ins.wait_for_timeout(1000)
-    ins.locator('main a[href*="/insights"]').first.click()
-    ins.wait_for_url(lambda u: "/insights" in u, timeout=20000)
-    ins.wait_for_load_state("networkidle")
+
+    insight_hrefs = ins.eval_on_selector_all(
+        'main a[href*="/insights"]',
+        "els => [...new Set(els.map(e => e.getAttribute('href')))]",
+    )
+    check(
+        "the dashboard links to course insights",
+        len(insight_hrefs) > 0,
+        f"{len(insight_hrefs)} courses",
+    )
+
+    # This suite goes on to open the quiz tracker, so it needs a student who has actually
+    # sat a quiz — and it has to go looking rather than take whoever is listed first.
+    # The cohorts fill up with accounts created by the other suites, which finish their
+    # lessons but never take a quiz; picking blindly landed on one of those, and the
+    # correctly-empty tracker that followed read as a broken tracker.
+    attempts_on_card = re.compile(r"(\d+)\s*ATTEMPTS", re.IGNORECASE)
+
+    def attempts_shown(link):
+        found = attempts_on_card.search(link.inner_text())
+        return int(found.group(1)) if found else 0
+
+    chosen_course, chosen_student = None, 0
+
+    for href in insight_hrefs:
+        ins.goto(f"{BASE}{href}", wait_until="networkidle")
+        ins.wait_for_timeout(700)
+        links = ins.locator('main a[href^="/studio/students/"]')
+
+        # Remember the first course that has any cohort at all, so a total absence of
+        # attempts still produces a readable failure further down instead of a hang.
+        if chosen_course is None and links.count() > 0:
+            chosen_course = href
+
+        sat = next(
+            (i for i in range(links.count()) if attempts_shown(links.nth(i)) > 0), None
+        )
+        if sat is not None:
+            chosen_course, chosen_student = href, sat
+            break
+
+    check("the instructor has a cohort to inspect", chosen_course is not None)
+
+    if ins.url != f"{BASE}{chosen_course}":
+        ins.goto(f"{BASE}{chosen_course}", wait_until="networkidle")
+        ins.wait_for_timeout(700)
 
     student_links = ins.locator('main a[href^="/studio/students/"]')
     check(
@@ -72,8 +115,13 @@ with sync_playwright() as p:
         student_links.count() > 0,
         f"{student_links.count()} links",
     )
+    check(
+        "the cohort has a student with quiz attempts to inspect",
+        attempts_shown(student_links.nth(chosen_student)) > 0,
+        " ".join(student_links.nth(chosen_student).inner_text().split())[:60],
+    )
 
-    student_links.first.click()
+    student_links.nth(chosen_student).click()
     ins.wait_for_url(re.compile(r"/studio/students/\d+$"), timeout=20000)
     ins.wait_for_load_state("networkidle")
     ins.wait_for_timeout(900)

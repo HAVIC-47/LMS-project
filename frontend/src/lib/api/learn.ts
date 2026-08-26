@@ -27,6 +27,17 @@ export async function getCourseProgress(courseDocumentId: string): Promise<Cours
   return response?.data ?? null;
 }
 
+export type AttemptStatus = {
+  used: number;
+  maxAttempts: number;
+  /** Null when the quiz is uncapped. */
+  remaining: number | null;
+  cooldownMinutes: number;
+  availableAt: string | null;
+  allowed: boolean;
+  reason: string;
+};
+
 export type StudentQuizQuestion = {
   id: number;
   documentId: string;
@@ -44,6 +55,11 @@ export type StudentQuiz = {
   course: { documentId: string; title: string } | null;
   /** `correctIndex` is stripped by the backend, so it is absent from this type by design. */
   questions: StudentQuizQuestion[];
+  /**
+   * How many attempts this student has left, computed server-side. Null for staff, who are
+   * previewing the quiz rather than sitting it.
+   */
+  attemptStatus: AttemptStatus | null;
 };
 
 export async function getQuizToTake(quizDocumentId: string): Promise<StudentQuiz | null> {

@@ -24,6 +24,12 @@ export default {
       config: { policies: ADMIN_ONLY },
     },
     {
+      method: 'GET',
+      path: '/platform/users/export',
+      handler: 'platform.exportUsers',
+      config: { policies: ADMIN_ONLY },
+    },
+    {
       method: 'PUT',
       path: '/platform/users/:id/access',
       handler: 'platform.updateUserAccess',

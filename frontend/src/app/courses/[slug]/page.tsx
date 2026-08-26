@@ -6,6 +6,7 @@ import {
   LockSimpleIcon,
   PlayCircleIcon,
   QuestionIcon,
+  SealCheckIcon,
   TextAlignLeftIcon,
 } from '@phosphor-icons/react/dist/ssr';
 import { ButtonLink } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { EnrollButton, EnrolledNotice } from '@/components/marketing/enroll-butt
 import { getCourseBySlug } from '@/lib/api/public';
 import { isEnrolledInCourse } from '@/lib/api/student';
 import { getSessionUser } from '@/lib/session';
+import { ReviewPanel } from '@/components/reviews/review-panel';
 import { ROLES } from '@/lib/types';
 import { isRenderableImage } from '@/lib/format';
 
@@ -56,6 +58,15 @@ export default async function CourseDetailPage({ params }: PageProps) {
   // Only a student can be enrolled, so the extra request is skipped for everyone else.
   const enrolled = isStudent ? await isEnrolledInCourse(course.documentId) : false;
 
+  // A UI hint only. Whether this person may rate or remove a review is decided again by
+  // the backend on every write.
+  const viewer = user
+    ? {
+        id: user.id,
+        canModerate: user.role === ROLES.ADMIN || user.role === ROLES.CONTENT_MANAGER,
+      }
+    : null;
+
   return (
     <article className="py-16 lg:py-20">
       <Container className="flex flex-col gap-14">
@@ -91,6 +102,32 @@ export default async function CourseDetailPage({ params }: PageProps) {
                 {lessons.length === 1 ? 'lesson' : 'lessons'}
               </span>
             </div>
+
+            {/*
+              Stated before enrolling, not discovered afterwards. The certificate is the
+              reason to finish rather than to skim, and a reward nobody knows about cannot
+              motivate anything.
+
+              The wording tracks the actual rule: a course with no quiz needs only the
+              lessons, because requiring a pass on an assessment that does not exist would
+              make those courses uncompletable. Promising a quiz that is not there would be
+              the same mistake in reverse.
+            */}
+            {lessons.length > 0 ? (
+              <p className="flex items-start gap-2.5 rounded-card border border-line bg-surface px-4 py-3 text-sm text-text-muted">
+                <SealCheckIcon
+                  size={16}
+                  weight="fill"
+                  aria-hidden
+                  className="mt-0.5 shrink-0 text-accent"
+                />
+                <span>
+                  {quiz
+                    ? 'Finish every lesson and pass the quiz to earn a certificate you can share and anyone can verify.'
+                    : 'Finish every lesson to earn a certificate you can share and anyone can verify.'}
+                </span>
+              </p>
+            ) : null}
 
             <EnrollCta
               isStudent={isStudent}
@@ -181,6 +218,26 @@ export default async function CourseDetailPage({ params }: PageProps) {
             </ol>
           )}
         </section>
+
+        {/*
+          Enrollment is the qualification to rate a course. That excludes staff by
+          construction, which is deliberate: an instructor rating their own course is not a
+          review, and a catalog whose stars can be set by anyone with an account is worth
+          less than no stars at all. The backend enforces it; this only explains why.
+        */}
+        <div className="mx-auto w-full max-w-[68ch]">
+          <ReviewPanel
+            targetType="course"
+            targetDocumentId={course.documentId}
+            viewer={viewer}
+            canReview={isStudent && enrolled}
+            cannotReviewReason={
+              isStudent
+                ? 'Enroll in this course to rate it.'
+                : 'Only students enrolled in a course can rate it.'
+            }
+          />
+        </div>
       </Container>
     </article>
   );

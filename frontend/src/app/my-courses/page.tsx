@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { GraduationCapIcon } from '@phosphor-icons/react/dist/ssr';
+import { GraduationCapIcon, SealCheckIcon } from '@phosphor-icons/react/dist/ssr';
 import { ButtonLink } from '@/components/ui/button';
 import { Container, EmptyState, ProgressRail, SectionHeading } from '@/components/ui/primitives';
 import { getMyEnrollments } from '@/lib/api/student';
 import { getMyAttempts } from '@/lib/api/learn';
+import { getMyCertificates } from '@/lib/api/extras';
 import { requireRole } from '@/lib/guards';
 import { ROLES } from '@/lib/types';
 import { formatDate, isRenderableImage } from '@/lib/format';
@@ -23,7 +24,11 @@ export const metadata: Metadata = {
 export default async function MyCoursesPage() {
   await requireRole([ROLES.STUDENT]);
 
-  const [enrollments, attempts] = await Promise.all([getMyEnrollments(), getMyAttempts()]);
+  const [enrollments, attempts, certificates] = await Promise.all([
+    getMyEnrollments(),
+    getMyAttempts(),
+    getMyCertificates(),
+  ]);
 
   if (enrollments.length === 0) {
     return (
@@ -104,6 +109,50 @@ export default async function MyCoursesPage() {
             );
           })}
         </div>
+
+        {/* Above the attempt history, because a certificate is the outcome and an attempt is
+            the working. Putting it below meant that on a real account the reward for
+            finishing a course appeared underneath a wall of "NOT PASSED" rows.
+
+            Nothing renders until the first one is earned: an empty "Certificates" heading on
+            every account would read as a promise the product had not kept. */}
+        {certificates.length > 0 ? (
+          <section className="flex flex-col gap-6">
+            <SectionHeading
+              as="h2"
+              title="Certificates"
+              lede="Earned by finishing every lesson and passing the quiz."
+            />
+
+            <ul className="grid gap-4 sm:grid-cols-2">
+              {certificates.map((certificate) => (
+                <li key={certificate.serial}>
+                  <Link
+                    href={`/certificates/${certificate.serial}`}
+                    className="group flex h-full flex-col gap-3 rounded-card border border-line bg-surface-raised p-5 transition-[transform,border-color,box-shadow] duration-300 [transition-timing-function:var(--ease-settle)] hover:-translate-y-1 hover:border-line-strong hover:shadow-[var(--shadow-lifted)]"
+                  >
+                    <span className="flex items-center gap-2">
+                      <SealCheckIcon size={18} weight="fill" aria-hidden className="text-accent" />
+                      <span className="microlabel">Completed</span>
+                    </span>
+
+                    <span className="font-serif text-lg leading-snug text-text transition-colors group-hover:text-accent-text">
+                      {certificate.courseTitle}
+                    </span>
+
+                    <span className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-subtle">
+                      <span className="font-mono tracking-wider">{certificate.serial}</span>
+                      <span>{formatDate(certificate.issuedAt)}</span>
+                      {certificate.bestScore !== null ? (
+                        <span className="font-mono tabular-nums">{certificate.bestScore}%</span>
+                      ) : null}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         {attempts.length > 0 ? (
           <section className="flex flex-col gap-5">

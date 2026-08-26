@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowUpRightIcon, ListChecksIcon, TextAlignLeftIcon } from '@phosphor-icons/react/dist/ssr';
 import { cn } from '@/lib/cn';
 import { CoverImage } from '@/components/ui/cover-image';
+import { Stars } from '@/components/ui/stars';
 import { LEVEL_LABELS, type Course } from '@/lib/types';
 
 /**
@@ -92,6 +93,13 @@ export function CourseCard({
         >
           {course.title}
         </h3>
+
+        {/* Only once somebody has rated it. Rendering "0.0 (0)" on an unrated course reads
+            as a bad score rather than as an absent one, and every new course would launch
+            looking like a failure. */}
+        {course.rating && course.rating.count > 0 ? (
+          <Stars value={course.rating.average} count={course.rating.count} size={13} />
+        ) : null}
 
         {course.description ? (
           <p

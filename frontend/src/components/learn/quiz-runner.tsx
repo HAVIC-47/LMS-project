@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircleIcon, CircleIcon, XCircleIcon } from '@phosphor-icons/react';
+import { CheckCircleIcon, CircleIcon, SealCheckIcon, XCircleIcon } from '@phosphor-icons/react';
 import { Button, ButtonLink } from '@/components/ui/button';
 import { FormError } from '@/components/ui/field';
 import { Panel, ProgressRail } from '@/components/ui/primitives';
@@ -21,6 +21,16 @@ type Result = {
     correctIndex: number;
     isCorrect: boolean;
   }[];
+  /** Non-null only on the attempt that completed the course. */
+  certificate: { serial: string } | null;
+  /** Recomputed after this attempt, so the screen can say how many tries are left. */
+  attemptStatus: {
+    used: number;
+    maxAttempts: number;
+    remaining: number | null;
+    allowed: boolean;
+    reason: string;
+  } | null;
 };
 
 /**
@@ -219,12 +229,47 @@ function ScoreCard({
       <p className="text-sm text-text-muted">
         {result.passed
           ? 'Your result is saved. You can review the marked answers below.'
-          : 'Your result is saved. The correct answers are marked below, and you can take it again.'}
+          : 'Your result is saved. The correct answers are marked below.'}
       </p>
 
-      <a href={`/learn/${slug}/quiz`} className="text-sm font-medium text-accent-text">
-        Take it again
-      </a>
+      {/*
+        The moment a course is finished is the moment to say so. The API has always returned
+        the certificate on the attempt that earned it; before this the screen dropped it on
+        the floor, and the student found out only by scrolling past their attempt history on
+        another page later.
+      */}
+      {result.certificate ? (
+        <div className="flex flex-col gap-3 rounded-card border border-accent bg-accent-soft p-5">
+          <span className="flex items-center gap-2">
+            <SealCheckIcon size={18} weight="fill" aria-hidden className="text-accent-text" />
+            <span className="microlabel">Course complete</span>
+          </span>
+
+          <p className="text-sm leading-relaxed text-text">
+            That was the last thing outstanding — your certificate has been issued.
+          </p>
+
+          <a
+            href={`/certificates/${result.certificate.serial}`}
+            className="w-fit text-sm font-medium text-accent-text underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-text"
+          >
+            View certificate {result.certificate.serial}
+          </a>
+        </div>
+      ) : null}
+
+      {/* Retaking is only offered when there is an attempt left to take. A link that leads
+          to a refusal is worse than no link. */}
+      {result.attemptStatus && !result.attemptStatus.allowed ? (
+        <p className="text-sm text-text-subtle">{result.attemptStatus.reason}</p>
+      ) : (
+        <a href={`/learn/${slug}/quiz`} className="text-sm font-medium text-accent-text">
+          Take it again
+          {result.attemptStatus?.remaining !== null && result.attemptStatus
+            ? ` (${result.attemptStatus.remaining} left)`
+            : ''}
+        </a>
+      )}
     </Panel>
   );
 }

@@ -46,6 +46,7 @@ export default async function QuizPage({ params }: PageProps) {
     notFound();
   }
 
+  const status = quiz.attemptStatus;
   const previous = attempts.filter((attempt) => attempt.quiz?.documentId === quiz.documentId);
   const best = previous.reduce<number | null>(
     (highest, attempt) => (highest === null || attempt.score > highest ? attempt.score : highest),
@@ -70,12 +71,37 @@ export default async function QuizPage({ params }: PageProps) {
             </>
           ) : null}
         </p>
+
+        {/* Stated before they start, not after the server refuses a submission. An
+            uncapped quiz says nothing rather than "unlimited attempts", which would draw
+            attention to a limit that does not exist. */}
+        {status && status.maxAttempts > 0 ? (
+          <p className="text-sm text-text-muted">
+            <span className="font-mono tabular-nums text-text">{status.used}</span> of{' '}
+            <span className="font-mono tabular-nums text-text">{status.maxAttempts}</span>{' '}
+            attempts used
+            {status.cooldownMinutes > 0 ? (
+              <>
+                , with {status.cooldownMinutes} minute
+                {status.cooldownMinutes === 1 ? '' : 's'} between tries
+              </>
+            ) : null}
+            .
+          </p>
+        ) : null}
       </header>
 
       {quiz.questions.length === 0 ? (
         <EmptyState
           title="This quiz has no questions yet"
           description="The instructor is still writing it. Check back once it is ready."
+        />
+      ) : status && !status.allowed ? (
+        // The form is not rendered at all rather than rendered disabled. A disabled form
+        // invites a reader to look for the way round it; an explanation does not.
+        <EmptyState
+          title="No attempts left"
+          description={`${status.reason} Your recorded attempts are below.`}
         />
       ) : (
         <QuizRunner quiz={quiz} courseSlug={slug} />

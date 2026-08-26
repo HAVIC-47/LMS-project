@@ -8,6 +8,70 @@ import { buildBlogInsights } from './blog-insights';
 const canSeeDrafts = (user?: AuthUser) => isAdmin(user) || isContentManager(user);
 
 /**
+ * Attaches how many likes and comments a post has.
+ *
+ * Both reference the post by `postDocumentId` rather than by a relation — that was forced
+ * by Draft and Publish, which keeps a draft row and a published row per document — so
+ * `?populate` cannot reach them and the index would otherwise have to ask per card.
+ *
+ * Two queries for the whole page rather than two per card. Counting rows rather than
+ * reading a stored counter is the same decision the like button itself makes: a counter can
+ * drift from the set of people who actually liked the post, and a count cannot.
+ */
+const attachEngagement = async (
+  strapi: Core.Strapi,
+  response: { data?: unknown }
+): Promise<{ data?: unknown }> => {
+  if (!response || typeof response !== 'object' || !response.data) return response;
+
+  const entries = (Array.isArray(response.data) ? response.data : [response.data]) as {
+    documentId?: string;
+  }[];
+
+  const documentIds = entries.map((entry) => entry?.documentId).filter(Boolean) as string[];
+
+  if (documentIds.length === 0) return response;
+
+  const [likes, comments] = await Promise.all([
+    strapi.db.query('api::post-like.post-like').findMany({
+      where: { postDocumentId: { $in: documentIds } },
+      select: ['postDocumentId'],
+    }),
+    strapi.db.query('api::comment.comment').findMany({
+      where: { postDocumentId: { $in: documentIds } },
+      select: ['postDocumentId'],
+    }),
+  ]);
+
+  const tally = (rows: { postDocumentId: string }[]) => {
+    const counts = new Map<string, number>();
+    for (const row of rows) {
+      counts.set(row.postDocumentId, (counts.get(row.postDocumentId) ?? 0) + 1);
+    }
+    return counts;
+  };
+
+  const likesBy = tally(likes as { postDocumentId: string }[]);
+  // Replies are comments too, and a thread of five replies is five contributions to the
+  // discussion — counting only top-level ones would understate it.
+  const commentsBy = tally(comments as { postDocumentId: string }[]);
+
+  const decorate = (entry: { documentId?: string }) =>
+    entry?.documentId
+      ? {
+          ...entry,
+          likeCount: likesBy.get(entry.documentId) ?? 0,
+          commentCount: commentsBy.get(entry.documentId) ?? 0,
+        }
+      : entry;
+
+  return {
+    ...response,
+    data: Array.isArray(response.data) ? entries.map(decorate) : decorate(entries[0]),
+  };
+};
+
+/**
  * Attaches the post author as an `author` field.
  *
  * The same problem `attachInstructors` solves for courses, and the same fix. `?populate=author`
@@ -86,7 +150,7 @@ export default factories.createCoreController('api::blog-post.blog-post', ({ str
       ctx.query = { ...ctx.query, status: 'published' };
     }
 
-    return attachAuthors(strapi, await super.find(ctx));
+    return attachEngagement(strapi, await attachAuthors(strapi, await super.find(ctx)));
   },
 
   async findOne(ctx) {
@@ -96,7 +160,7 @@ export default factories.createCoreController('api::blog-post.blog-post', ({ str
       ctx.query = { ...ctx.query, status: 'published' };
     }
 
-    return attachAuthors(strapi, await super.findOne(ctx));
+    return attachEngagement(strapi, await attachAuthors(strapi, await super.findOne(ctx)));
   },
 
   /**

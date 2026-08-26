@@ -153,6 +153,12 @@ export type Course = {
   quizCount?: number;
   lessons?: LessonSummary[];
   quizzes?: QuizSummary[];
+  /**
+   * Averaged over the course's reviews, attached server-side for the same reason the
+   * instructor is: reviews are keyed by documentId rather than by a relation, so
+   * `?populate` cannot reach them.
+   */
+  rating?: { average: number; count: number };
 };
 
 export type CourseProgress = {
@@ -178,6 +184,9 @@ export type BlogPost = {
   slug: string;
   excerpt: string | null;
   body: string | null;
+  /** Attached server-side. Both are counted rows, never a stored tally. */
+  likeCount?: number;
+  commentCount?: number;
   coverImageUrl: string | null;
   publishedAt: string | null;
   createdAt: string;

@@ -7,7 +7,9 @@
     "displayName": "Notification",
     "description": "An in-app message for one recipient, raised by something that happened elsewhere."
   },
-  "options": { "draftAndPublish": false },
+  "options": {
+    "draftAndPublish": false
+  },
   "pluginOptions": {},
   "attributes": {
     "recipient": {
@@ -32,7 +34,8 @@
         "course-published",
         "lesson-added",
         "post-published",
-        "role-changed"
+        "role-changed",
+        "course-reviewed"
       ],
       "required": true
     },

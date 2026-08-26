@@ -2,6 +2,8 @@ import type { Context } from 'koa';
 import type { Core } from '@strapi/strapi';
 import { ROLES, type AuthUser, type RoleType } from '../../../utils/permissions';
 import { notify } from '../../../utils/notify';
+import { AUDIT_ACTIONS, recordAudit } from '../../../utils/audit';
+import { csvFilename, toCsv } from '../../../utils/csv';
 
 /**
  * Admin-panel endpoints.
@@ -192,6 +194,85 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
   },
 
   /**
+   * GET /api/platform/users.csv
+   *
+   * The user table as a spreadsheet, honouring the same filters as the list it mirrors, so
+   * "export what I am looking at" does what it says rather than exporting everything.
+   */
+  async exportUsers(ctx: Context) {
+    const query = ctx.query as { search?: string; role?: string; status?: string };
+
+    const filters: Record<string, unknown>[] = [];
+    const search = typeof query.search === 'string' ? query.search.trim() : '';
+    const role = typeof query.role === 'string' ? query.role.trim() : '';
+    const status = typeof query.status === 'string' ? query.status.trim() : '';
+
+    if (search) {
+      filters.push({
+        $or: [
+          { username: { $containsi: search } },
+          { email: { $containsi: search } },
+          { displayName: { $containsi: search } },
+        ],
+      });
+    }
+
+    if (role && MANAGEABLE_ROLES.includes(role as RoleType)) {
+      filters.push({ role: { type: role } });
+    }
+
+    if (status === 'blocked') filters.push({ blocked: true });
+    if (status === 'active') filters.push({ blocked: false });
+    if (status === 'unconfirmed') filters.push({ confirmed: false });
+
+    const users = await strapi.db.query('plugin::users-permissions.user').findMany({
+      where: filters.length ? { $and: filters } : {},
+      populate: { role: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const rows = (users as {
+      username: string;
+      email: string;
+      displayName?: string | null;
+      confirmed: boolean;
+      blocked: boolean;
+      courseAccessRestricted?: boolean;
+      blogAccessRestricted?: boolean;
+      createdAt: string;
+      role?: { type: string } | null;
+    }[]).map((user) => [
+      user.username,
+      user.displayName ?? '',
+      user.email,
+      user.role?.type ?? 'none',
+      user.createdAt,
+      user.confirmed ? 'yes' : 'no',
+      user.blocked ? 'yes' : 'no',
+      user.courseAccessRestricted ? 'yes' : 'no',
+      user.blogAccessRestricted ? 'yes' : 'no',
+    ]);
+
+    ctx.set('Content-Type', 'text/csv; charset=utf-8');
+    ctx.set('Content-Disposition', `attachment; filename="${csvFilename('users')}"`);
+
+    ctx.body = toCsv(
+      [
+        'username',
+        'display name',
+        'email',
+        'role',
+        'joined',
+        'confirmed',
+        'blocked',
+        'course access restricted',
+        'blog access restricted',
+      ],
+      rows
+    );
+  },
+
+  /**
    * PUT /api/platform/users/:id/access
    *
    * Blocking, and the two narrower feature restrictions. Separate from role assignment
@@ -246,6 +327,40 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
       where: { id: targetId },
       data,
     });
+
+    // One entry per flag that actually moved. Recording "access updated" would leave the
+    // log unable to answer the only question anybody asks it — which restriction, and when.
+    const AUDITED: [keyof typeof data, string, string, string][] = [
+      ['blocked', AUDIT_ACTIONS.USER_BLOCKED, AUDIT_ACTIONS.USER_UNBLOCKED, 'sign-in'],
+      [
+        'courseAccessRestricted',
+        AUDIT_ACTIONS.COURSE_ACCESS_RESTRICTED,
+        AUDIT_ACTIONS.COURSE_ACCESS_RESTORED,
+        'course access',
+      ],
+      [
+        'blogAccessRestricted',
+        AUDIT_ACTIONS.BLOG_ACCESS_RESTRICTED,
+        AUDIT_ACTIONS.BLOG_ACCESS_RESTORED,
+        'blog access',
+      ],
+    ];
+
+    for (const [key, onAction, offAction, label] of AUDITED) {
+      if (!(key in data)) continue;
+
+      const turnedOn = data[key] === true;
+
+      await recordAudit(strapi, {
+        action: (turnedOn ? onAction : offAction) as typeof AUDIT_ACTIONS.USER_BLOCKED,
+        actor,
+        targetType: 'user',
+        targetId: target.id,
+        targetLabel: target.username,
+        summary: `${turnedOn ? 'Restricted' : 'Restored'} ${label} for ${target.username}`,
+        details: { field: key, value: turnedOn },
+      });
+    }
 
     return {
       data: {
@@ -321,6 +436,16 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     strapi.log.info(
       `[platform] ${actor.email} changed role of ${target.email}: ${target.role?.type ?? 'none'} -> ${requestedRole}`
     );
+
+    await recordAudit(strapi, {
+      action: AUDIT_ACTIONS.ROLE_CHANGED,
+      actor,
+      targetType: 'user',
+      targetId: target.id,
+      targetLabel: target.username,
+      summary: `${target.username}: ${target.role?.type ?? 'none'} → ${requestedRole}`,
+      details: { from: target.role?.type ?? 'none', to: requestedRole },
+    });
 
     await notify(strapi, {
       recipientId: target.id,

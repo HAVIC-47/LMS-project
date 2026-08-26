@@ -12,6 +12,8 @@ import { findCourseByDocumentId, isEnrolled, linkUserRelation, readRelationInput
 import { sanitizeCourseResponse } from '../../../utils/sanitize';
 import { computeCourseProgress } from '../../../utils/progress';
 import { buildCourseInsights } from './course-insights';
+import { AUDIT_ACTIONS, recordAudit } from '../../../utils/audit';
+import { csvFilename, toCsv } from '../../../utils/csv';
 import { findEnrolledStudentIds, notifyMany } from '../../../utils/notify';
 
 /**
@@ -52,6 +54,69 @@ const attachInstructors = async (
     entry?.documentId
       ? { ...entry, instructor: ownerByDocument.get(entry.documentId) ?? null }
       : entry;
+
+  return {
+    ...response,
+    data: Array.isArray(response.data) ? entries.map(decorate) : decorate(entries[0]),
+  };
+};
+
+/**
+ * Attaches the average rating and how many ratings it is over.
+ *
+ * Same shape of problem as `attachInstructors`, and the same fix: reviews are keyed by
+ * `targetDocumentId` rather than by a relation, so `?populate` cannot reach them and the
+ * catalog would otherwise have to ask per card.
+ *
+ * One query for the whole page regardless of how many courses are on it. Averaging in SQL
+ * would be tidier still, but the aggregate would have to come back per-document anyway and
+ * this keeps the rounding rule in one place with the rest of the review code.
+ */
+const attachRatings = async (
+  strapi: Core.Strapi,
+  response: { data?: unknown }
+): Promise<{ data?: unknown }> => {
+  if (!response || typeof response !== 'object' || !response.data) return response;
+
+  const entries = (Array.isArray(response.data) ? response.data : [response.data]) as {
+    documentId?: string;
+  }[];
+
+  const documentIds = entries.map((entry) => entry?.documentId).filter(Boolean) as string[];
+
+  if (documentIds.length === 0) return response;
+
+  const rows = (await strapi.db.query('api::review.review').findMany({
+    where: { targetType: 'course', targetDocumentId: { $in: documentIds } },
+    select: ['targetDocumentId', 'rating'],
+  })) as { targetDocumentId: string; rating: number }[];
+
+  const byCourse = new Map<string, number[]>();
+
+  for (const row of rows) {
+    const list = byCourse.get(row.targetDocumentId) ?? [];
+    list.push(row.rating);
+    byCourse.set(row.targetDocumentId, list);
+  }
+
+  const decorate = (entry: { documentId?: string }) => {
+    if (!entry?.documentId) return entry;
+
+    const ratings = byCourse.get(entry.documentId) ?? [];
+
+    return {
+      ...entry,
+      rating: {
+        // Zero ratings is not a zero-star course. The count is what the card checks before
+        // it draws anything.
+        count: ratings.length,
+        average:
+          ratings.length === 0
+            ? 0
+            : Math.round((ratings.reduce((sum, n) => sum + n, 0) / ratings.length) * 10) / 10,
+      },
+    };
+  };
 
   return {
     ...response,
@@ -172,9 +237,11 @@ export default factories.createCoreController('api::course.course', ({ strapi })
 
     const response = await super.find(ctx);
 
-    return attachSyllabus(strapi, await attachInstructors(strapi, sanitizeCourseResponse(response)), {
-      includeLessons: false,
-    });
+    return attachSyllabus(
+      strapi,
+      await attachRatings(strapi, await attachInstructors(strapi, sanitizeCourseResponse(response))),
+      { includeLessons: false }
+    );
   },
 
   async findOne(ctx) {
@@ -193,9 +260,11 @@ export default factories.createCoreController('api::course.course', ({ strapi })
 
     const response = await super.findOne(ctx);
 
-    return attachSyllabus(strapi, await attachInstructors(strapi, sanitizeCourseResponse(response)), {
-      includeLessons: true,
-    });
+    return attachSyllabus(
+      strapi,
+      await attachRatings(strapi, await attachInstructors(strapi, sanitizeCourseResponse(response))),
+      { includeLessons: true }
+    );
   },
 
   /**
@@ -224,7 +293,7 @@ export default factories.createCoreController('api::course.course', ({ strapi })
       await linkUserRelation(strapi, 'api::course.course', documentId, 'owner', user.id);
     }
 
-    return attachInstructors(strapi, sanitizeCourseResponse(response));
+    return attachRatings(strapi, await attachInstructors(strapi, sanitizeCourseResponse(response)));
   },
 
   /**
@@ -260,7 +329,7 @@ export default factories.createCoreController('api::course.course', ({ strapi })
       }
     }
 
-    return attachInstructors(strapi, sanitizeCourseResponse(response));
+    return attachRatings(strapi, await attachInstructors(strapi, sanitizeCourseResponse(response)));
   },
 
   /**
@@ -436,7 +505,79 @@ export default factories.createCoreController('api::course.course', ({ strapi })
       where: { course: { id: course.id }, student: { id: studentId } },
     });
 
+    const student = await strapi.db.query('plugin::users-permissions.user').findOne({
+      where: { id: studentId },
+      select: ['username'],
+    });
+
+    await recordAudit(strapi, {
+      action: AUDIT_ACTIONS.STUDENT_REMOVED,
+      actor: user,
+      targetType: 'enrollment',
+      targetId: studentId,
+      targetLabel: student?.username ?? `user ${studentId}`,
+      summary: `Removed ${student?.username ?? studentId} from ${course.title}`,
+      details: { course: course.title, progressCleared: count ?? 0 },
+    });
+
     return { data: { removed: true, progressCleared: count ?? 0 } };
+  },
+
+  /**
+   * GET /api/courses/:id/students.csv
+   *
+   * The cohort as a spreadsheet. Same data and the same ownership check as the insights
+   * page — this is a second rendering of a read that is already permitted, not a second
+   * permission.
+   */
+  async exportStudents(ctx) {
+    const user = ctx.state.user as AuthUser;
+    const course = await findCourseByDocumentId(strapi, ctx.params.id);
+
+    if (!course) return ctx.notFound('Course not found');
+
+    if (!canManageCourse(user, course)) {
+      return ctx.forbidden('You cannot export students for this course');
+    }
+
+    const insights = await buildCourseInsights(strapi, course);
+
+    const rows = insights.students.map((student) => [
+      student.username,
+      student.displayName ?? '',
+      student.email,
+      student.enrolledAt,
+      student.progress.completed,
+      student.progress.total,
+      student.progress.percentage,
+      student.attempts.length,
+      student.bestScore ?? '',
+      student.attempts.some((attempt) => attempt.passed) ? 'yes' : 'no',
+    ]);
+
+    ctx.set('Content-Type', 'text/csv; charset=utf-8');
+    ctx.set(
+      'Content-Disposition',
+      `attachment; filename="${csvFilename(course.slug, 'students')}"`
+    );
+
+    // `ctx.body` directly rather than a `{ data }` envelope: the browser is going to save
+    // this to disk, not parse it.
+    ctx.body = toCsv(
+      [
+        'username',
+        'display name',
+        'email',
+        'enrolled at',
+        'lessons completed',
+        'lessons total',
+        'completion %',
+        'quiz attempts',
+        'best score',
+        'passed',
+      ],
+      rows
+    );
   },
 
   /**

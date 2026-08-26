@@ -12,6 +12,8 @@ import { toStudentQuiz } from '../../../utils/sanitize';
 import { gradeAttempt, type SubmittedAnswer } from '../../../utils/grading';
 import { notify } from '../../../utils/notify';
 import { denyIfCourseRestricted } from '../../../utils/access';
+import { getAttemptStatus, checkAttemptLimit } from '../../../utils/attempts';
+import { issueCertificateIfEarned } from '../../../utils/certificates';
 
 export default factories.createCoreController('api::quiz.quiz', ({ strapi }) => ({
   /**
@@ -117,7 +119,14 @@ export default factories.createCoreController('api::quiz.quiz', ({ strapi }) => 
       return ctx.forbidden('You cannot view this quiz');
     }
 
-    return { data: toStudentQuiz(quiz) };
+    // The student needs to know where they stand before they start, not after the server
+    // refuses their submission. Staff get the same shape with a null status, because they
+    // are previewing rather than sitting it.
+    const attemptStatus = isStudent(user)
+      ? await getAttemptStatus(strapi, user.id, quiz)
+      : null;
+
+    return { data: { ...toStudentQuiz(quiz), attemptStatus } };
   },
 
   /**
@@ -156,6 +165,24 @@ export default factories.createCoreController('api::quiz.quiz', ({ strapi }) => 
       return ctx.forbidden('You must be enrolled in this course to take its quiz');
     }
 
+    /**
+     * Attempt limits.
+     *
+     * Without this a student can resubmit until they guess their way to a pass, which makes
+     * the stored score a record of persistence rather than of knowledge. The check has to
+     * live here rather than in the UI for the obvious reason: the endpoint is callable
+     * directly, and a limit enforced by a disabled button is not a limit.
+     *
+     * `maxAttempts: 0` means unlimited, so a practice quiz is still expressible. The
+     * cooldown is separate and optional — a cap alone stops the tenth attempt, a cooldown
+     * stops the second one from arriving four seconds after the first.
+     */
+    const limit = await checkAttemptLimit(strapi, user.id, quiz);
+
+    if (!limit.allowed) {
+      return ctx.forbidden(limit.reason);
+    }
+
     const body = (ctx.request.body ?? {}) as {
       answers?: SubmittedAnswer[];
       data?: { answers?: SubmittedAnswer[] };
@@ -192,6 +219,12 @@ export default factories.createCoreController('api::quiz.quiz', ({ strapi }) => 
       },
     });
 
+    // The other moment a certificate can be earned: the lessons were already finished and
+    // this attempt supplied the pass the course was waiting on.
+    const certificate = result.passed
+      ? await issueCertificateIfEarned(strapi, user.id, quiz.course.id)
+      : null;
+
     const courseRow = await strapi.db.query('api::course.course').findOne({
       where: { id: quiz.course.id },
       populate: { owner: true },
@@ -224,6 +257,11 @@ export default factories.createCoreController('api::quiz.quiz', ({ strapi }) => 
         // The breakdown is returned only *after* grading, so revealing the right answers
         // here costs nothing — the attempt is already recorded.
         breakdown: result.breakdown,
+        // Non-null only on the attempt that completed the course.
+        certificate,
+        // Recomputed after this attempt, so the result screen can say how many tries are
+        // left without asking again.
+        attemptStatus: await getAttemptStatus(strapi, user.id, quiz),
       },
     };
   },

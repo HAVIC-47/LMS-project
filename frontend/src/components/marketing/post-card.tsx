@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowUpRightIcon } from '@phosphor-icons/react/dist/ssr';
+import { ArrowUpRightIcon, ChatCircleIcon, HeartIcon } from '@phosphor-icons/react/dist/ssr';
 import { cn } from '@/lib/cn';
 import { CoverImage } from '@/components/ui/cover-image';
 import { formatDate, readingTime } from '@/lib/format';
@@ -116,9 +116,30 @@ export function PostCard({
           </p>
         ) : null}
 
-        {post.author ? (
-          <span className="mt-auto pt-2 text-xs text-text-subtle">{post.author.username}</span>
-        ) : null}
+        {/* Engagement and the byline share the footer rule, so the card ends on one line
+            rather than two. Both counts always render, including at zero: unlike a rating,
+            "0 comments" is a fact about the discussion rather than a verdict on the post. */}
+        <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 pt-3">
+          <span className="flex items-center gap-1.5 text-xs text-text-subtle">
+            <HeartIcon size={13} weight={post.likeCount ? 'fill' : 'regular'} aria-hidden />
+            <span className="font-mono tabular-nums text-text">{post.likeCount ?? 0}</span>
+            <span className="sr-only">
+              {post.likeCount === 1 ? 'like' : 'likes'}
+            </span>
+          </span>
+
+          <span className="flex items-center gap-1.5 text-xs text-text-subtle">
+            <ChatCircleIcon size={13} aria-hidden />
+            <span className="font-mono tabular-nums text-text">{post.commentCount ?? 0}</span>
+            <span className="sr-only">
+              {post.commentCount === 1 ? 'comment' : 'comments'}
+            </span>
+          </span>
+
+          {post.author ? (
+            <span className="ml-auto text-xs text-text-subtle">{post.author.username}</span>
+          ) : null}
+        </div>
       </div>
     </Link>
   );

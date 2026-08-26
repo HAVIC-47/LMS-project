@@ -38,6 +38,9 @@ export type AuthoredQuestion = {
 };
 
 export type AuthoredQuiz = {
+  /** 0 means unlimited. Null on quizzes created before attempt limits existed. */
+  maxAttempts?: number | null;
+  cooldownMinutes?: number | null;
   id: number;
   documentId: string;
   title: string;

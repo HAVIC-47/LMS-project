@@ -3,6 +3,7 @@ import type { CourseSeed, PostSeed } from './types';
 import { coverFor } from './types';
 import { COURSES } from './courses';
 import { POSTS } from './posts';
+import { seedRatings } from './ratings';
 
 /**
  * Full catalog seed.
@@ -148,6 +149,10 @@ export const seedCatalog = async (strapi: Core.Strapi) => {
     await createPost(strapi, seed, usersByEmail.get(seed.authorEmail)?.id);
     createdPosts += 1;
   }
+
+  // Runs whether or not anything was created above: the courses may already exist from a
+  // previous boot while the ratings do not.
+  await seedRatings(strapi);
 
   if (createdCourses === 0 && createdPosts === 0) {
     strapi.log.info('[lms] catalog already present — nothing to add');

@@ -1,11 +1,12 @@
 import Link from 'next/link';
-import { GraduationCapIcon } from '@phosphor-icons/react/dist/ssr';
+import { GraduationCapIcon, SealCheckIcon } from '@phosphor-icons/react/dist/ssr';
 import { ButtonLink } from '@/components/ui/button';
 import { EmptyState, ProgressRail } from '@/components/ui/primitives';
 import { BarChart, ChartCard, Ring, Sparkline, StackedBar } from '@/components/ui/charts';
 import { formatDate } from '@/lib/format';
 import { getMyEnrollments } from '@/lib/api/student';
 import { getMyAttempts } from '@/lib/api/learn';
+import { getMyCertificates } from '@/lib/api/extras';
 
 /**
  * The student dashboard.
@@ -20,7 +21,11 @@ import { getMyAttempts } from '@/lib/api/learn';
  * and no numbers the server has not already vouched for.
  */
 export async function StudentDashboard() {
-  const [enrollments, attempts] = await Promise.all([getMyEnrollments(), getMyAttempts()]);
+  const [enrollments, attempts, certificates] = await Promise.all([
+    getMyEnrollments(),
+    getMyAttempts(),
+    getMyCertificates(),
+  ]);
 
   if (enrollments.length === 0) {
     return (
@@ -70,6 +75,46 @@ export async function StudentDashboard() {
 
   return (
     <div className="flex flex-col gap-8">
+      {/* First, when there is one. The charts below measure progress; this is what progress
+          was for, and burying the result under the working gets the order backwards. */}
+      {certificates.length > 0 ? (
+        <ChartCard
+          title={certificates.length === 1 ? 'Certificate earned' : 'Certificates earned'}
+          caption="Every lesson finished, and the quiz passed."
+          action={
+            <Link href="/my-courses" className="text-sm font-medium text-accent-text hover:underline">
+              All of them
+            </Link>
+          }
+        >
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {certificates.slice(0, 4).map((certificate) => (
+              <li key={certificate.serial}>
+                <Link
+                  href={`/certificates/${certificate.serial}`}
+                  className="group flex h-full items-start gap-3 rounded-card border border-line bg-surface p-4 transition-[transform,border-color] duration-300 [transition-timing-function:var(--ease-settle)] hover:-translate-y-0.5 hover:border-line-strong"
+                >
+                  <SealCheckIcon
+                    size={18}
+                    weight="fill"
+                    aria-hidden
+                    className="mt-0.5 shrink-0 text-accent"
+                  />
+                  <span className="flex min-w-0 flex-col gap-1">
+                    <span className="truncate text-sm font-medium text-text transition-colors group-hover:text-accent-text">
+                      {certificate.courseTitle}
+                    </span>
+                    <span className="font-mono text-xs tracking-wider text-text-subtle">
+                      {certificate.serial}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </ChartCard>
+      ) : null}
+
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <ChartCard
           title="Overall completion"

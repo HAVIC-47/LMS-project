@@ -37,6 +37,54 @@ def login(page,email):
     except Exception: pass
     page.wait_for_load_state("networkidle")
 
+
+def requests_reset_attempts():
+    """Clear the demo student's attempts on the seeded quiz so this suite is repeatable.
+
+    Attempt caps made the quiz run once-only against a persistent database. Deleting the
+    rows through Strapi's admin-authenticated API keeps the test honest: it resets state
+    the same way a person would, rather than reaching into the file the app is using.
+    """
+    import json as _json
+    import urllib.request as _u
+
+    def _call(method, path, token=None, body=None):
+        data = _json.dumps(body).encode() if body is not None else None
+        req = _u.Request("http://127.0.0.1:1337/api" + path, data=data, method=method)
+        req.add_header("Content-Type", "application/json")
+        if token:
+            req.add_header("Authorization", f"Bearer {token}")
+        try:
+            with _u.urlopen(req) as r:
+                raw = r.read().decode()
+                return r.status, (_json.loads(raw) if raw.strip().startswith(("{", "[")) else raw)
+        except Exception:
+            return 0, None
+
+    _, auth = _call("POST", "/auth/local",
+                    body={"identifier": "admin@lms.test", "password": PW})
+    if not auth:
+        return False
+
+    token = auth["jwt"]
+    _, courses = _call("GET", "/courses?filters[slug][$eq]=modern-javascript-foundations", token)
+    if not courses or not courses.get("data"):
+        return False
+
+    course_id = courses["data"][0]["documentId"]
+    _, ins = _call("GET", f"/courses/{course_id}/insights", token)
+    if not ins:
+        return False
+
+    for student in ins["data"]["students"]:
+        if student["email"] != "student@lms.test":
+            continue
+        for attempt in student["attempts"]:
+            _call("DELETE", f"/quiz-attempts/{attempt['documentId']}", token)
+
+    return True
+
+
 with sync_playwright() as p:
     b=p.chromium.launch(headless=True)
     ctx=b.new_context(viewport={"width":1440,"height":900})
@@ -96,6 +144,17 @@ with sync_playwright() as p:
             check("undo restores progress", m and int(m.group(1)) == pct_before, f"back to {m.group(1) if m else '?'}%")
 
     # ---- quiz ----
+    #
+    # Quizzes are capped now, and this account keeps its attempt history between runs. Once
+    # the cap is reached the form is replaced by an explanation rather than rendered disabled,
+    # so the run has to recognise that state instead of waiting for a button that will never
+    # appear. Reset through the API first, so the happy path is still what normally runs.
+    reset = requests_reset_attempts()
+    page.goto(f"{BASE}/learn/modern-javascript-foundations/quiz", wait_until="networkidle")
+    page.wait_for_selector("main h1", timeout=20000)
+    panel = page.inner_text("main")
+    check("attempt allowance is shown before starting", "attempts used" in panel.lower(), panel[:70].replace(chr(10), " "))
+
     page.goto(f"{BASE}/learn/modern-javascript-foundations/quiz", wait_until="networkidle")
     page.wait_for_selector("main h1", timeout=20000)
     html=page.content()

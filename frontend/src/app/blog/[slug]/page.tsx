@@ -128,6 +128,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         </div>
 
         <PostEngagement postDocumentId={post.documentId} viewer={viewer} />
+
       </Container>
     </article>
   );

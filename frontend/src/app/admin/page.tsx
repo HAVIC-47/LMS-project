@@ -4,6 +4,9 @@ import { Container, SectionHeading, Stat } from '@/components/ui/primitives';
 import { UserTable } from '@/components/studio/user-table';
 import { getPlatformStats } from '@/lib/api/staff';
 import { UserFilters } from '@/components/studio/user-filters';
+import { AuditTrail } from '@/components/studio/audit-trail';
+import { ScrollSection } from '@/components/ui/scroll-section';
+import { getAuditLog } from '@/lib/api/extras';
 import { getPlatformUsers } from '@/lib/api/insights';
 import { requireRole } from '@/lib/guards';
 import { ROLE_LABELS, ROLES, type RoleType } from '@/lib/types';
@@ -18,7 +21,7 @@ export const metadata: Metadata = { title: 'Admin' };
  * refuse both calls. The guard controls what is worth rendering, not what is reachable.
  */
 type Props = {
-  searchParams: Promise<{ search?: string; role?: string; status?: string }>;
+  searchParams: Promise<{ search?: string; role?: string; status?: string; audit?: string }>;
 };
 
 export default async function AdminPage({ searchParams }: Props) {
@@ -28,10 +31,21 @@ export default async function AdminPage({ searchParams }: Props) {
   // linkable and the browser never receives the users it is not showing.
   const filters = await searchParams;
 
-  const [stats, users] = await Promise.all([
+  const [stats, users, audit] = await Promise.all([
     getPlatformStats(),
     getPlatformUsers({ search: filters.search, role: filters.role, status: filters.status }),
+    getAuditLog({ search: filters.audit }),
   ]);
+
+  // The export mirrors whatever the table is currently showing, so "export what I am
+  // looking at" does what it says instead of quietly dumping every account.
+  const exportQuery = new URLSearchParams(
+    Object.entries({
+      search: filters.search ?? '',
+      role: filters.role ?? '',
+      status: filters.status ?? '',
+    }).filter(([, value]) => value)
+  ).toString();
 
   return (
     <div className="py-16 lg:py-20">
@@ -99,15 +113,40 @@ export default async function AdminPage({ searchParams }: Props) {
             ) : null}
           </div>
 
-          <UserFilters total={users.length} />
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <UserFilters total={users.length} />
+            <ButtonLink
+              href={`/api/export/users${exportQuery ? `?${exportQuery}` : ''}`}
+              variant="outline"
+              size="sm"
+            >
+              Export CSV
+            </ButtonLink>
+          </div>
 
           {users.length === 0 ? (
             <p className="rounded-card border border-dashed border-line-strong bg-surface px-6 py-12 text-center text-text-muted">
               No user matches these filters.
             </p>
           ) : (
-            <UserTable users={users} currentUserId={user.id} />
+            <ScrollSection label="the user list">
+              <UserTable users={users} currentUserId={user.id} />
+            </ScrollSection>
           )}
+        </section>
+
+        <section className="flex flex-col gap-6">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <SectionHeading
+              as="h2"
+              title="Audit trail"
+              lede="Every privileged action, in order. Written by the server and never editable."
+            />
+          </div>
+
+          <ScrollSection label="the audit trail">
+            <AuditTrail entries={audit.entries} total={audit.total} />
+          </ScrollSection>
         </section>
       </Container>
     </div>

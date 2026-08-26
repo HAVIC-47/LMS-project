@@ -2,6 +2,7 @@ import { factories } from '@strapi/strapi';
 import type { AuthUser } from '../../../utils/permissions';
 import { isEnrolled } from '../../../utils/resolve';
 import { computeCourseProgress } from '../../../utils/progress';
+import { issueCertificateIfEarned } from '../../../utils/certificates';
 
 /**
  * Marking a lesson complete.
@@ -80,11 +81,17 @@ export default factories.createCoreController(
       // second round trip — and so the number it shows is the server's, not a local guess.
       const progress = await computeCourseProgress(strapi, user.id, lesson.course.id);
 
+      // The lesson that takes a student to 100% is one of the two moments a certificate can
+      // be earned. Checked here rather than on a schedule, so it appears the instant it is
+      // due; the helper is idempotent, so calling it on every completion is harmless.
+      const certificate = await issueCertificateIfEarned(strapi, user.id, lesson.course.id);
+
       return {
         data: {
           lesson: { id: lesson.id, documentId: lesson.documentId, title: lesson.title },
           completed: true,
           progress,
+          certificate,
         },
       };
     },

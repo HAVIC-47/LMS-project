@@ -54,6 +54,8 @@ function CreateQuiz({ courseId }: { courseId: string }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [passingScore, setPassingScore] = useState(60);
+  const [maxAttempts, setMaxAttempts] = useState(4);
+  const [cooldownMinutes, setCooldownMinutes] = useState(0);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -76,6 +78,9 @@ function CreateQuiz({ courseId }: { courseId: string }) {
         title: title.trim(),
         description: description.trim() || null,
         passingScore: Number(passingScore) || 60,
+        // `|| 4` would turn a deliberate 0 into 4, and 0 is the way to say "unlimited".
+        maxAttempts: Number.isFinite(Number(maxAttempts)) ? Number(maxAttempts) : 4,
+        cooldownMinutes: Number(cooldownMinutes) || 0,
         course: courseId,
       });
 
@@ -125,6 +130,26 @@ function CreateQuiz({ courseId }: { courseId: string }) {
               onChange={(e) => setPassingScore(Number(e.target.value))}
               hint="Percentage needed to pass."
             />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                label="Attempts allowed"
+                type="number"
+                min={0}
+                max={50}
+                value={String(maxAttempts)}
+                onChange={(e) => setMaxAttempts(Number(e.target.value))}
+                hint="0 means unlimited. A cap is what stops a four-option quiz being guessed."
+              />
+              <Field
+                label="Cooldown (minutes)"
+                type="number"
+                min={0}
+                value={String(cooldownMinutes)}
+                onChange={(e) => setCooldownMinutes(Number(e.target.value))}
+                hint="0 for none. Stops a retry arriving seconds after a failure."
+              />
+            </div>
 
             <div className="flex flex-wrap gap-3">
               <Button type="submit" loading={pending}>
@@ -256,6 +281,9 @@ function ExistingQuiz({ quiz, onChanged }: { quiz: AuthoredQuiz; onChanged: () =
           <h2 className="text-xl font-semibold">{quiz.title}</h2>
           <p className="microlabel">
             {questions.length} questions, pass mark {quiz.passingScore}%
+            {typeof quiz.maxAttempts === 'number' && quiz.maxAttempts > 0
+              ? `, ${quiz.maxAttempts} attempts`
+              : ', unlimited attempts'}
           </p>
         </div>
         {!draft ? (

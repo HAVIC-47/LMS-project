@@ -31,6 +31,9 @@ const POST_LIKE = 'api::post-like.post-like';
 const NOTIFICATION = 'api::notification.notification';
 const PROFILE = 'api::profile.profile';
 const LEARNER = 'api::learner.learner';
+const AUDIT = 'api::audit-log.audit-log';
+const CERTIFICATE = 'api::certificate.certificate';
+const REVIEW = 'api::review.review';
 
 const CRUD = ['find', 'findOne', 'create', 'update', 'delete'];
 const READ = ['find', 'findOne'];
@@ -67,12 +70,16 @@ const PARTICIPATION_ACTIONS = [
   // from the token rather than the URL, which is what makes granting it to all four roles
   // safe: there is no id to tamper with.
   ...actions(PROFILE, ['show', 'updateMe']),
+  // Reviewing is open to any signed-in account; *what* they may review is decided per
+  // record in the controller, because a course needs enrollment and a post does not.
+  ...actions(REVIEW, ['forTarget', 'submit', 'remove']),
+  ...actions(CERTIFICATE, ['me', 'verify']),
   ...UPLOAD_ACTIONS,
 ];
 
 /** Everything an admin can reach — the union of every other role plus the admin panel. */
 const ADMIN_ACTIONS = [
-  ...actions(COURSE, [...CRUD, 'bySlug', 'mine', 'myProgress', 'studentsProgress', 'insights', 'removeStudent']),
+  ...actions(COURSE, [...CRUD, 'bySlug', 'mine', 'myProgress', 'studentsProgress', 'insights', 'removeStudent', 'exportStudents']),
   ...actions(LESSON, CRUD),
   ...actions(QUIZ, [...CRUD, 'take']),
   ...actions(QUESTION, CRUD),
@@ -80,7 +87,11 @@ const ADMIN_ACTIONS = [
   ...actions(PROGRESS, CRUD),
   ...actions(ATTEMPT, [...CRUD, 'forQuiz']),
   ...actions(BLOG, [...CRUD, 'mine', 'insights', 'publish', 'unpublish']),
-  ...actions(PLATFORM, ['stats', 'users', 'updateUserRole', 'updateUserAccess']),
+  ...actions(PLATFORM, ['stats', 'users', 'updateUserRole', 'updateUserAccess', 'exportUsers']),
+  // Read-only, and admin-only. There is no create, update or delete action to grant.
+  ...actions(AUDIT, ['find']),
+  ...actions(REVIEW, ['forTarget', 'submit', 'remove']),
+  ...actions(CERTIFICATE, ['me', 'verify']),
   ...actions(PROFILE, ['show', 'updateMe']),
   ...actions(LEARNER, ['show']),
   ...actions(COMMENT, [...CRUD, 'forPost']),
@@ -95,7 +106,7 @@ const ADMIN_ACTIONS = [
  * roles ❌" row, enforced rather than merely hidden.
  */
 const CONTENT_MANAGER_ACTIONS = [
-  ...actions(COURSE, [...CRUD, 'bySlug', 'mine', 'studentsProgress', 'insights', 'removeStudent']),
+  ...actions(COURSE, [...CRUD, 'bySlug', 'mine', 'studentsProgress', 'insights', 'removeStudent', 'exportStudents']),
   ...actions(LEARNER, ['show']),
   ...actions(LESSON, CRUD),
   ...actions(QUIZ, [...CRUD, 'take']),
@@ -111,7 +122,7 @@ const CONTENT_MANAGER_ACTIONS = [
  * posts ❌" — so no create/update/delete for BLOG here.
  */
 const INSTRUCTOR_ACTIONS = [
-  ...actions(COURSE, [...CRUD, 'bySlug', 'mine', 'studentsProgress', 'insights', 'removeStudent']),
+  ...actions(COURSE, [...CRUD, 'bySlug', 'mine', 'studentsProgress', 'insights', 'removeStudent', 'exportStudents']),
   ...actions(LEARNER, ['show']),
   ...actions(LESSON, CRUD),
   ...actions(QUIZ, [...CRUD, 'take']),
@@ -152,6 +163,10 @@ const PUBLIC_ACTIONS = [
   // Profiles are public: the point of them is that people can look each other up. Note
   // `show` without `updateMe` — reading is open, writing needs an account.
   ...actions(PROFILE, ['show']),
+  // Ratings are part of the catalog, and a certificate whose verification page needs a
+  // login is a certificate nobody can check.
+  ...actions(REVIEW, ['forTarget']),
+  ...actions(CERTIFICATE, ['verify']),
 ];
 
 export const PERMISSION_MAP: Record<RoleType | 'public', string[]> = {

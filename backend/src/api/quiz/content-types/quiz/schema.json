@@ -44,6 +44,18 @@
       "relation": "oneToMany",
       "target": "api::quiz-attempt.quiz-attempt",
       "mappedBy": "quiz"
+    },
+    "maxAttempts": {
+      "type": "integer",
+      "default": 4,
+      "min": 0,
+      "max": 50
+    },
+    "cooldownMinutes": {
+      "type": "integer",
+      "default": 0,
+      "min": 0,
+      "max": 10080
     }
   }
 }

@@ -1,0 +1,49 @@
+{
+  "kind": "collectionType",
+  "collectionName": "audit_logs",
+  "info": {
+    "singularName": "audit-log",
+    "pluralName": "audit-logs",
+    "displayName": "Audit log",
+    "description": "An append-only record of a privileged action. Never edited, never deleted through the API."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "action": {
+      "type": "string",
+      "required": true,
+      "maxLength": 60
+    },
+    "actor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "actorLabel": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "targetType": {
+      "type": "string",
+      "maxLength": 40
+    },
+    "targetId": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "targetLabel": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "details": {
+      "type": "json"
+    }
+  }
+}

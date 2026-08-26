@@ -37,6 +37,20 @@ export default {
       },
     },
     {
+      method: 'GET',
+      path: '/courses/:id/students/export',
+      handler: 'course.exportStudents',
+      config: {
+        policies: [
+          {
+            name: 'global::has-role',
+            config: { roles: [ROLES.ADMIN, ROLES.CONTENT_MANAGER, ROLES.INSTRUCTOR] },
+          },
+          { name: 'global::owns-course', config: { subject: 'course' } },
+        ],
+      },
+    },
+    {
       method: 'DELETE',
       path: '/courses/:id/students/:studentId',
       handler: 'course.removeStudent',
