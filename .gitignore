@@ -14,7 +14,10 @@ backend/.cache/
 backend/.strapi/
 backend/build/
 backend/dist/
-backend/types/generated/
+# NOT ignored: generated types are committed on purpose. They are produced by
+# `strapi ts:generate-types`, which boots Strapi and opens a database connection --
+# something a build container cannot rely on. Without them in the repo, a clean clone
+# type-checks against an empty schema registry and every documents() call fails.
 backend/exports/
 backend/*.db
 backend/*.db-journal
