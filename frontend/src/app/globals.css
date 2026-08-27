@@ -315,6 +315,33 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Page width
+   ---------------------------------------------------------------------------
+   One variable, read by the content container and the floating header bar so the
+   two can never disagree. See src/lib/layout.ts.
+
+   The steps do not sit on one curve -- 90%, 73% and 66% of their viewports -- so
+   no single clamp() hits all three. Written as plain media queries in source
+   order because Tailwind sorts its own breakpoint rules, and sorted `3xl` ahead
+   of `2xl`, which made the widest step lose on every screen it targeted.
+   --------------------------------------------------------------------------- */
+:root {
+  --page-max: 72rem; /* 1152px -- 1280x720 and below */
+}
+
+@media (min-width: 1536px) {
+  :root {
+    --page-max: 87.5rem; /* 1400px -- 1920x1080 */
+  }
+}
+
+@media (min-width: 2200px) {
+  :root {
+    --page-max: 106.25rem; /* 1700px -- 2560x1440 */
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
