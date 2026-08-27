@@ -220,10 +220,17 @@ with sync_playwright() as p:
     check("a student can post a question", body in stu.inner_text("main"))
 
     def reply_buttons(page):
+        """The action buttons on one comment.
+
+        Scoped to `li article` rather than `main article`: the course page's own root
+        element is an <article>, so a looser selector matched the whole page -- which
+        contains the comment text but none of its buttons, and therefore returned an empty
+        list for everybody. That read as "correctly no Reply button" for the student who
+        should not have one, and the check passed while testing nothing."""
         return page.evaluate(
             """(text) => {
-                 const posts = [...document.querySelectorAll('main article')];
-                 const mine = posts.find(a => a.textContent.includes(text));
+                 const rows = [...document.querySelectorAll('main li > article')];
+                 const mine = rows.find(a => a.textContent.includes(text));
                  if (!mine) return null;
                  return [...mine.querySelectorAll(':scope > div > button')]
                    .map(b => b.textContent.trim());
@@ -255,7 +262,9 @@ with sync_playwright() as p:
     )
 
     # The owning instructor is.
-    i2 = ictx.new_page()
+    # A fresh context: the one used earlier in this suite is closed at line 187.
+    i2ctx = b.new_context(viewport={"width": 1440, "height": 900})
+    i2 = login(i2ctx, "instructor@lms.test")
     i2.goto(f"{BASE}{COURSE}", wait_until="networkidle")
     i2.wait_for_timeout(1800)
     ins_buttons = reply_buttons(i2)
@@ -301,7 +310,7 @@ with sync_playwright() as p:
         body,
     )
     stu.wait_for_timeout(1200)
-    o_ctx.close()
+    o_ctx.close(); i2ctx.close()
 
     # ---------- serif redesign actually applied ----------
     fam = anon.evaluate("() => getComputedStyle(document.querySelector('main h1')).fontFamily")
