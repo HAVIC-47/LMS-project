@@ -10,11 +10,11 @@
  *
  *   viewport            container   margin each side
  *   ---------------------------------------------------
- *   below 1536px        1152px      fluid below ~1200px
- *   1536px and up       1400px      >= 68px
- *   2200px and up       1700px      >= 250px
+ *   below 1600px        1152px      fluid below ~1200px
+ *   1600px and up       1500px      >= 50px
+ *   2200px and up       1900px      >= 150px
  *
- * Steps rather than a `clamp()` because the three target sizes are 90%, 73% and 66% of
+ * Steps rather than a `clamp()` because the three target sizes are 90%, 78% and 74% of
  * their viewports -- no single curve passes through all three. Plain media queries rather
  * than Tailwind breakpoint variants because Tailwind sorts its own rules, and it emitted a
  * `3xl` (2200px) rule *ahead* of `2xl` (1536px): both match on a 2560px screen, the later
