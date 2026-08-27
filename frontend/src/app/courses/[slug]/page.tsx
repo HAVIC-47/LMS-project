@@ -16,6 +16,7 @@ import { getCourseBySlug } from '@/lib/api/public';
 import { isEnrolledInCourse } from '@/lib/api/student';
 import { getSessionUser } from '@/lib/session';
 import { ReviewPanel } from '@/components/reviews/review-panel';
+import { CourseDiscussion } from '@/components/course/course-discussion';
 import { ROLES } from '@/lib/types';
 import { isRenderableImage } from '@/lib/format';
 
@@ -64,6 +65,24 @@ export default async function CourseDetailPage({ params }: PageProps) {
     ? {
         id: user.id,
         canModerate: user.role === ROLES.ADMIN || user.role === ROLES.CONTENT_MANAGER,
+      }
+    : null;
+
+  /**
+   * Teaching staff *for this course*, which is not the same as being staff on the platform.
+   * An admin or content manager answers anywhere; an instructor answers on the courses they
+   * own and is an ordinary participant on everyone else's -- the same scope that decides
+   * who may edit this course's lessons and quizzes.
+   *
+   * A hint for the UI only. The backend re-derives it on every write.
+   */
+  const discussionViewer = user
+    ? {
+        id: user.id,
+        isStaff:
+          user.role === ROLES.ADMIN ||
+          user.role === ROLES.CONTENT_MANAGER ||
+          (user.role === ROLES.INSTRUCTOR && course.instructor?.id === user.id),
       }
     : null;
 
@@ -225,7 +244,11 @@ export default async function CourseDetailPage({ params }: PageProps) {
           review, and a catalog whose stars can be set by anyone with an account is worth
           less than no stars at all. The backend enforces it; this only explains why.
         */}
-        <div className="mx-auto w-full max-w-[68ch]">
+        {/* Ratings and discussion share one column. Both are reading-and-writing surfaces
+            rather than catalog information, and giving them a common left and right edge is
+            what makes them read as the bottom half of the page instead of two unrelated
+            blocks that happen to follow the syllabus. */}
+        <div className="mx-auto flex w-full max-w-[68ch] flex-col gap-14">
           <ReviewPanel
             targetType="course"
             targetDocumentId={course.documentId}
@@ -237,6 +260,8 @@ export default async function CourseDetailPage({ params }: PageProps) {
                 : 'Only students enrolled in a course can rate it.'
             }
           />
+
+          <CourseDiscussion courseDocumentId={course.documentId} viewer={discussionViewer} />
         </div>
       </Container>
     </article>

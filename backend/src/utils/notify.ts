@@ -26,7 +26,8 @@ export type NotificationType =
   | 'lesson-added'
   | 'post-published'
   | 'role-changed'
-  | 'course-reviewed';
+  | 'course-reviewed'
+  | 'comment-on-course';
 
 type NotifyInput = {
   recipientId: number | null | undefined;

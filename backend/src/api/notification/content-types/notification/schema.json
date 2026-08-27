@@ -35,7 +35,8 @@
         "lesson-added",
         "post-published",
         "role-changed",
-        "course-reviewed"
+        "course-reviewed",
+        "comment-on-course"
       ],
       "required": true
     },

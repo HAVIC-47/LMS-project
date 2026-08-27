@@ -890,6 +890,173 @@ async function main() {
 
   await expectStatus('admin', 'can delete any blog post', admin.jwt, 'DELETE', `/api/blog-posts/${postId}`, [200, 204]);
 
+  // ---------------------------------------------------------------------------
+  // Course discussion.
+  //
+  // The rule under test: anyone signed in may ask a question, but a reply may only come
+  // from the teaching staff for that course, or from the person who asked. A student
+  // answering another student is the case this whole feature exists to prevent, and it is
+  // checked from both sides -- refused for the student, allowed for each staff role.
+  // ---------------------------------------------------------------------------
+  heading('Course discussion');
+
+  const askQuestion = async (token, text, parentId) =>
+    call(token, 'POST', '/api/course-comments', {
+      courseDocumentId: jsCourse.documentId,
+      body: text,
+      parentId,
+    });
+
+  const question = await askQuestion(student.jwt, 'Does the event loop lesson cover microtasks?');
+  expectTrue(
+    'discussion',
+    'a student can ask a question on a course',
+    question.status === 201 && Boolean(question.json?.data?.documentId),
+    `status ${question.status}`
+  );
+
+  const questionId = question.json?.data?.documentId;
+
+  // The headline rule.
+  const otherStudentReply = await askQuestion(seededStudent.jwt, 'I think so?', questionId);
+  expectTrue(
+    'discussion',
+    'a student CANNOT reply to another student’s comment',
+    otherStudentReply.status === 403,
+    `expected 403, got ${otherStudentReply.status}`
+  );
+
+  const ownReply = await askQuestion(student.jwt, 'To be clear, I mean queueMicrotask.', questionId);
+  expectTrue(
+    'discussion',
+    'a student CAN reply to their own comment',
+    ownReply.status === 201,
+    `expected 201, got ${ownReply.status}`
+  );
+
+  const instructorReply = await askQuestion(instructor.jwt, 'Yes — lesson four.', questionId);
+  expectTrue(
+    'discussion',
+    'the owning instructor can reply to anyone',
+    instructorReply.status === 201,
+    `expected 201, got ${instructorReply.status}`
+  );
+
+  const cmReply = await askQuestion(cm.jwt, 'Adding a note to the syllabus.', questionId);
+  expectTrue(
+    'discussion',
+    'a content manager can reply to anyone',
+    cmReply.status === 201,
+    `expected 201, got ${cmReply.status}`
+  );
+
+  const adminReply = await askQuestion(admin.jwt, 'Confirmed.', questionId);
+  expectTrue(
+    'discussion',
+    'an admin can reply to anyone',
+    adminReply.status === 201,
+    `expected 201, got ${adminReply.status}`
+  );
+
+  // An instructor is staff on their own courses and an ordinary participant elsewhere --
+  // the same scope that decides who may edit a course's lessons.
+  const foreignQuestion = await call(student.jwt, 'POST', '/api/course-comments', {
+    courseDocumentId: designCourse.documentId,
+    body: 'Is there a figma file for this?',
+  });
+
+  const foreignReply = await call(instructor.jwt, 'POST', '/api/course-comments', {
+    courseDocumentId: designCourse.documentId,
+    body: 'Not that I know of.',
+    parentId: foreignQuestion.json?.data?.documentId,
+  });
+
+  expectTrue(
+    'discussion',
+    'an instructor cannot reply on a course they do not own',
+    foreignReply.status === 403,
+    `expected 403, got ${foreignReply.status}`
+  );
+
+  // The thread is public: a visitor deciding whether to enroll can read the questions.
+  const thread = await call(null, 'GET', `/api/course-comments/course/${jsCourse.documentId}`);
+  const root = (thread.json?.data ?? []).find((c) => c.documentId === questionId);
+
+  expectTrue(
+    'discussion',
+    'the thread is readable logged out',
+    thread.status === 200 && Boolean(root),
+    `status ${thread.status}`
+  );
+
+  expectTrue(
+    'discussion',
+    'replies are nested under the question',
+    (root?.replies?.length ?? 0) === 4,
+    `${root?.replies?.length ?? 0} replies (expected 4)`
+  );
+
+  expectTrue(
+    'discussion',
+    'staff replies carry a role, so an answer is distinguishable',
+    root?.replies?.some((r) => r.author?.role === 'instructor'),
+    JSON.stringify(root?.replies?.map((r) => r.author?.role) ?? [])
+  );
+
+  await expectStatus(
+    'discussion',
+    'a logged-out visitor cannot post',
+    null,
+    'POST',
+    '/api/course-comments',
+    [401, 403],
+    { courseDocumentId: jsCourse.documentId, body: 'hello' }
+  );
+
+  await expectStatus(
+    'discussion',
+    'a draft course accepts no comments',
+    student.jwt,
+    'POST',
+    '/api/course-comments',
+    404,
+    { courseDocumentId: draftCourse.documentId, body: 'anyone home?' }
+  );
+
+  await expectStatus(
+    'discussion',
+    'a student cannot delete someone else’s comment',
+    seededStudent.jwt,
+    'DELETE',
+    `/api/course-comments/${questionId}`,
+    403
+  );
+
+  await expectStatus(
+    'discussion',
+    'the author can delete their own comment',
+    student.jwt,
+    'DELETE',
+    `/api/course-comments/${questionId}`,
+    [200, 204]
+  );
+
+  // Deleting a question takes its answers with it, so the thread never shows replies to a
+  // question nobody can see.
+  const afterDelete = await call(null, 'GET', `/api/course-comments/course/${jsCourse.documentId}`);
+  expectTrue(
+    'discussion',
+    'deleting a question removes its replies too',
+    !(afterDelete.json?.data ?? []).some((c) => c.documentId === questionId) &&
+      (afterDelete.json?.meta?.total ?? 0) === 0,
+    `${afterDelete.json?.meta?.total ?? 0} comments left`
+  );
+
+  // Tidy up the foreign-course question this section created.
+  if (foreignQuestion.json?.data?.documentId) {
+    await call(admin.jwt, 'DELETE', `/api/course-comments/${foreignQuestion.json.data.documentId}`);
+  }
+
   // Cleanup: leave the seeded student's data alone, but drop the smoke enrollment.
   await call(student.jwt, 'DELETE', `/api/enrollments/me/${jsCourse.documentId}`);
 

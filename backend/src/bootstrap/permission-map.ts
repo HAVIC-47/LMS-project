@@ -27,6 +27,7 @@ const ATTEMPT = 'api::quiz-attempt.quiz-attempt';
 const BLOG = 'api::blog-post.blog-post';
 const PLATFORM = 'api::platform.platform';
 const COMMENT = 'api::comment.comment';
+const COURSE_COMMENT = 'api::course-comment.course-comment';
 const POST_LIKE = 'api::post-like.post-like';
 const NOTIFICATION = 'api::notification.notification';
 const PROFILE = 'api::profile.profile';
@@ -64,6 +65,11 @@ export const UPLOAD_ACTIONS = ['plugin::upload.content-api.upload'];
  */
 const PARTICIPATION_ACTIONS = [
   ...actions(COMMENT, ['create', 'update', 'delete', 'forPost']),
+  // Course discussion. Granted the same verbs as the blog thread: this layer decides
+  // who may call the endpoint at all. The rule that a student may reply only to their
+  // own comment depends on who wrote the parent, which a route permission cannot see,
+  // so it lives in the controller.
+  ...actions(COURSE_COMMENT, ['create', 'update', 'delete', 'forCourse']),
   ...actions(POST_LIKE, ['forPost', 'toggle']),
   ...actions(NOTIFICATION, ['me', 'unreadCount', 'markRead', 'markAllRead']),
   // Everyone has a profile, so everyone may edit their own. `updateMe` takes the target
@@ -95,6 +101,7 @@ const ADMIN_ACTIONS = [
   ...actions(PROFILE, ['show', 'updateMe']),
   ...actions(LEARNER, ['show']),
   ...actions(COMMENT, [...CRUD, 'forPost']),
+  ...actions(COURSE_COMMENT, [...CRUD, 'forCourse']),
   ...actions(POST_LIKE, [...CRUD, 'forPost', 'toggle']),
   ...actions(NOTIFICATION, [...CRUD, 'me', 'unreadCount', 'markRead', 'markAllRead']),
   ...UPLOAD_ACTIONS,
@@ -159,6 +166,7 @@ const PUBLIC_ACTIONS = [
   // The discussion under a published post is part of the post, so a logged-out visitor
   // reads both. Writing still requires an account.
   ...actions(COMMENT, ['forPost']),
+  ...actions(COURSE_COMMENT, ['forCourse']),
   ...actions(POST_LIKE, ['forPost']),
   // Profiles are public: the point of them is that people can look each other up. Note
   // `show` without `updateMe` — reading is open, writing needs an account.

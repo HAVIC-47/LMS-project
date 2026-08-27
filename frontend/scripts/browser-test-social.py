@@ -198,6 +198,111 @@ with sync_playwright() as p:
     check("comment deleted", text not in after_text)
     check("its reply went with it", reply not in after_text)
 
+    # ---------- course discussion ----------
+    # The UI side of the reply rule. The rule itself is a backend concern and is covered by
+    # `npm run smoke`; what matters here is that the interface does not offer an action that
+    # would come back 403 -- a Reply button a student can press and never succeed with is
+    # worse than no button.
+    COURSE = "/courses/modern-javascript-foundations"
+
+    stu.goto(f"{BASE}{COURSE}", wait_until="networkidle")
+    stu.wait_for_timeout(1500)
+    check(
+        "the course page carries a discussion",
+        "Discussion" in stu.inner_text("main"),
+    )
+
+    # Ask, from the student.
+    body = f"Smoke question {STAMP}"
+    stu.fill('textarea[id="course-comment-root"]', body)
+    stu.click('button:has-text("Post question")')
+    stu.wait_for_timeout(2000)
+    check("a student can post a question", body in stu.inner_text("main"))
+
+    def reply_buttons(page):
+        return page.evaluate(
+            """(text) => {
+                 const posts = [...document.querySelectorAll('main article')];
+                 const mine = posts.find(a => a.textContent.includes(text));
+                 if (!mine) return null;
+                 return [...mine.querySelectorAll(':scope > div > button')]
+                   .map(b => b.textContent.trim());
+               }""",
+            body,
+        )
+
+    check(
+        "the author is offered Reply on their own question",
+        "Reply" in (reply_buttons(stu) or []),
+        str(reply_buttons(stu)),
+    )
+
+    # A second student must not be offered it.
+    o_ctx = b.new_context(viewport={"width": 1440, "height": 900})
+    other = login(o_ctx, "student2@lms.test")
+    other.goto(f"{BASE}{COURSE}", wait_until="networkidle")
+    other.wait_for_timeout(1800)
+    other_buttons = reply_buttons(other)
+    check(
+        "another student is NOT offered Reply",
+        other_buttons is not None and "Reply" not in other_buttons,
+        str(other_buttons),
+    )
+    check(
+        "another student is NOT offered Delete",
+        other_buttons is not None and "Delete" not in other_buttons,
+        str(other_buttons),
+    )
+
+    # The owning instructor is.
+    i2 = ictx.new_page()
+    i2.goto(f"{BASE}{COURSE}", wait_until="networkidle")
+    i2.wait_for_timeout(1800)
+    ins_buttons = reply_buttons(i2)
+    check(
+        "the owning instructor IS offered Reply",
+        ins_buttons is not None and "Reply" in ins_buttons,
+        str(ins_buttons),
+    )
+
+    # A staff answer is labelled, so a student can tell it from a guess.
+    i2.fill('textarea[id="course-comment-root"]', f"Instructor note {STAMP}")
+    i2.click('button:has-text("Post question")')
+    i2.wait_for_timeout(2000)
+    check(
+        "a staff comment is badged with the role",
+        "Instructor" in i2.inner_text("main"),
+    )
+
+    # Logged out: readable, but no form.
+    anon_course = actx.new_page()
+    anon_course.goto(f"{BASE}{COURSE}", wait_until="networkidle")
+    anon_course.wait_for_timeout(1500)
+    anon_text = anon_course.inner_text("main")
+    check("a logged-out visitor can read the thread", body in anon_text)
+    check(
+        "a logged-out visitor is asked to log in rather than shown a form",
+        anon_course.locator('textarea[id="course-comment-root"]').count() == 0
+        and "to join the discussion" in anon_text,
+    )
+    anon_course.close()
+
+    # Clean up what this suite posted.
+    stu.reload(wait_until="networkidle")
+    stu.wait_for_timeout(1200)
+    stu.once("dialog", lambda d: d.accept())
+    stu.evaluate(
+        """(text) => {
+             const posts = [...document.querySelectorAll('main article')];
+             const mine = posts.find(a => a.textContent.includes(text));
+             const del = mine && [...mine.querySelectorAll('button')].find(b => b.textContent.trim() === 'Delete');
+             if (del) del.click();
+           }""",
+        body,
+    )
+    stu.wait_for_timeout(1200)
+    o_ctx.close()
+
     # ---------- serif redesign actually applied ----------
     fam = anon.evaluate("() => getComputedStyle(document.querySelector('main h1')).fontFamily")
     check("headings use the serif display", "Playfair" in fam, fam[:60])

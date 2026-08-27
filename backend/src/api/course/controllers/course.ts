@@ -333,6 +333,23 @@ export default factories.createCoreController('api::course.course', ({ strapi })
   },
 
   /**
+   * DELETE /api/courses/:id
+   *
+   * `global::owns-course` has already approved the caller for this course; this override
+   * exists only to clean up behind it. Course comments reference the course by
+   * `courseDocumentId` -- a string, chosen so Draft & Publish cannot strand them -- which
+   * means there is no database cascade to delete them. Without this they outlive the course
+   * they belong to, invisible but still counted.
+   */
+  async delete(ctx) {
+    await strapi.db
+      .query('api::course-comment.course-comment')
+      .deleteMany({ where: { courseDocumentId: ctx.params.id } });
+
+    return super.delete(ctx);
+  },
+
+  /**
    * GET /api/courses/slug/:slug
    *
    * The course detail page addresses courses by slug, not documentId. Without this the

@@ -1,0 +1,43 @@
+{
+  "kind": "collectionType",
+  "collectionName": "course_comments",
+  "info": {
+    "singularName": "course-comment",
+    "pluralName": "course-comments",
+    "displayName": "Course Comment",
+    "description": "A question or comment on a course. A comment with a parent is a reply, and who may write one is restricted."
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "body": {
+      "type": "text",
+      "required": true,
+      "maxLength": 2000
+    },
+    "courseDocumentId": {
+      "type": "string",
+      "required": true
+    },
+    "author": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "parent": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::course-comment.course-comment",
+      "inversedBy": "replies"
+    },
+    "replies": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::course-comment.course-comment",
+      "mappedBy": "parent"
+    },
+    "editedAt": {
+      "type": "datetime"
+    }
+  }
+}

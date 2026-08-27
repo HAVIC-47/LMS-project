@@ -636,6 +636,54 @@ export interface ApiCommentComment extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiCourseCommentCourseComment
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'course_comments';
+  info: {
+    description: 'A question or comment on a course. A comment with a parent is a reply, and who may write one is restricted.';
+    displayName: 'Course Comment';
+    pluralName: 'course-comments';
+    singularName: 'course-comment';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    author: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    body: Schema.Attribute.Text &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 2000;
+      }>;
+    courseDocumentId: Schema.Attribute.String & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    editedAt: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::course-comment.course-comment'
+    > &
+      Schema.Attribute.Private;
+    parent: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::course-comment.course-comment'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    replies: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::course-comment.course-comment'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiCourseCourse extends Struct.CollectionTypeSchema {
   collectionName: 'courses';
   info: {
@@ -873,6 +921,7 @@ export interface ApiNotificationNotification
         'post-published',
         'role-changed',
         'course-reviewed',
+        'comment-on-course',
       ]
     > &
       Schema.Attribute.Required;
@@ -1684,6 +1733,7 @@ declare module '@strapi/strapi' {
       'api::blog-post.blog-post': ApiBlogPostBlogPost;
       'api::certificate.certificate': ApiCertificateCertificate;
       'api::comment.comment': ApiCommentComment;
+      'api::course-comment.course-comment': ApiCourseCommentCourseComment;
       'api::course.course': ApiCourseCourse;
       'api::enrollment.enrollment': ApiEnrollmentEnrollment;
       'api::lesson-progress.lesson-progress': ApiLessonProgressLessonProgress;
