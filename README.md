@@ -16,8 +16,16 @@ LMS-project/
   frontend/    Next.js 16 - public site, auth, role-aware dashboards
 ```
 
-**335 automated checks** cover it: 86 backend permission-matrix assertions and 249 browser
-checks across nine Playwright suites.
+**Live:**
+
+| | |
+|---|---|
+| Site | https://course-catalyst-lac.vercel.app |
+| API | https://lms-project-production-19cf.up.railway.app |
+| Strapi CMS | https://lms-project-production-19cf.up.railway.app/admin |
+
+**418 automated checks** cover it: 101 backend permission-matrix assertions and 317 browser
+checks across ten Playwright suites.
 
 ---
 
@@ -49,7 +57,9 @@ start from scratch.
 Created by the seed when `SEED_DEMO_DATA=true`. **The password is the same for all five**:
 `SEED_PASSWORD` from `.env`, which defaults to `Passw0rd!23`.
 
-Sign in at **http://localhost:3000/login**.
+Sign in at **http://localhost:3000/login** locally, or at
+**https://course-catalyst-lac.vercel.app/login** on the live site — the same seed runs in
+both, so these accounts work in either place.
 
 | Role | Email | Password | Lands on |
 |---|---|---|---|
@@ -124,7 +134,7 @@ Only `student@lms.test` is enrolled by the seed. `student2@lms.test` starts with
 npm run smoke
 ```
 
-Logs in as each role and walks the whole permission matrix — **86 checks** covering what
+Logs in as each role and walks the whole permission matrix — **101 checks** covering what
 each role may and may not do, the progress arithmetic, quiz grading, and the two leak paths
 that matter (quiz answers, blog drafts). Everything should read `PASS`.
 
@@ -145,19 +155,24 @@ npm run dev                    # http://localhost:3000
 
 ### Browser tests
 
-Nine Playwright suites, **249 checks**, run against a live backend and a running frontend:
+Ten Playwright suites, **317 checks**, run against a live backend and a running frontend:
 
 ```bash
 python frontend/scripts/browser-test.py             # 30  public pages, auth, all four roles
-python frontend/scripts/browser-test-student.py     # 25  lessons, progress, quiz
+python frontend/scripts/browser-test-student.py     # 26  lessons, progress, quiz
 python frontend/scripts/browser-test-authoring.py   # 32  studio, blog publishing, admin roles
-python frontend/scripts/browser-test-social.py      # 26  blog reading, likes, comments, notifications
+python frontend/scripts/browser-test-social.py      # 35  blog engagement, notifications, course discussion
 python frontend/scripts/browser-test-uploads.py     # 20  cover uploads, and who may upload
 python frontend/scripts/browser-test-profile.py     # 32  profiles, avatars, public/private split
 python frontend/scripts/browser-test-dashboards.py  # 26  the four role dashboards
-python frontend/scripts/browser-test-learner.py     # 29  per-student records, expanding cards
+python frontend/scripts/browser-test-learner.py     # 32  per-student records, expanding cards
 python frontend/scripts/browser-test-lists.py       # 29  search, filters, access toggles, un-enrol
+python frontend/scripts/browser-test-extras.py      # 55  attempt limits, certificates, ratings, audit, CSV
 ```
+
+Run them one at a time. Back to back, the later suites start losing logins to Strapi's rate
+limit on `/auth/local` — which is the rate limiter working correctly, and the suites being
+an abusive client.
 
 They assert behaviour rather than pixels: that a lesson body never appears on a public page,
 that the quiz HTML contains no answer key, that progress survives a reload, that a
@@ -241,8 +256,11 @@ nothing about what data a user can actually reach.
 | Remove a student from a course | ✅ | ✅ | Own courses | ❌ |
 | Block or restrict an account | ✅ | ❌ | ❌ | ❌ |
 | Edit their own profile | ✅ | ✅ | ✅ | ✅ |
+| Rate a course | ❌ | ❌ | ❌ | Enrolled only |
+| Ask a question on a course | ✅ | ✅ | ✅ | ✅ |
+| Reply to a question | ✅ | ✅ | Own courses | Own comment only |
 
-The last three rows are additions beyond the original spec matrix, enforced the same way.
+The last six rows are additions beyond the original spec matrix, enforced the same way.
 
 Enforced on the backend in three layers — the users-permissions grid, route policies, and
 ownership checks inside the controllers. See [ARCHITECTURE.md](ARCHITECTURE.md) for how and
@@ -330,6 +348,28 @@ why.
 - [x] Un-enrol a student from a course, with their lesson progress cleared
 - [x] Ten-course seeded catalog: 150 lessons, 50 quizzes, 15 blog posts
 - [x] 116-check browser suites for profiles, dashboards, records, search and moderation
+
+**Part 8 - attempt limits, certificates, ratings, audit trail, CSV export** ✅
+
+- [x] Quiz attempt limits, default 4, configurable per quiz; `0` means unlimited
+- [x] Certificates on completion — every lesson finished *and* the quiz passed
+- [x] Serial numbers in an ambiguity-free alphabet, verifiable at `/certificates/[serial]`
+      without a login, because a certificate nobody can check is not a certificate
+- [x] Star ratings and written reviews on courses, restricted to enrolled students
+- [x] Average rating shown on catalog cards; reaction and comment counts on blog cards
+- [x] Audit trail of every privileged action, admin-readable, with no update or delete route
+- [x] CSV export of the user list and of a course's cohort, escaped against formula injection
+- [x] Both `/admin` lists scroll inside themselves, so the page does not grow with the data
+- [x] 55-check browser suite for all five
+
+**Part 9 - course discussion and layout** ✅
+
+- [x] Threaded discussion on every course, readable signed out
+- [x] Reply restricted: teaching staff, or the person who wrote the comment
+- [x] Staff answers badged with their role, so an answer reads differently from a guess
+- [x] Page width steps by viewport (1152 / 1500 / 1900) with the type scale to match
+- [x] Blog posts relaid out: cover left, large title right, justified body beneath
+- [x] 9 more browser checks and 15 more backend checks
 
 ---
 
@@ -449,12 +489,13 @@ stores a draft row and a published row per document, and a relation would bind e
 to one of those rows and strand it on the next publish. The trade is no database cascade, so
 deleting a post clears its comments and likes explicitly.
 
-**Notifications** are raised by `src/utils/notify.ts`, which every feature calls. Ten event
-types are wired:
+**Notifications** are raised by `src/utils/notify.ts`, which every feature calls. Twelve
+event types are wired:
 
 | Event | Who hears about it |
 |---|---|
 | Comment on a post | the post's author |
+| Comment on a course | the course owner |
 | Reply to a comment | the person replied to |
 | Post liked | the post's author |
 | Student enrolls | the course owner |
@@ -464,6 +505,7 @@ types are wired:
 | Lesson added | everyone enrolled on a published course |
 | Post published | every student, on first publication only |
 | Role changed | the user whose role changed |
+| Course reviewed | the course owner |
 
 Three rules are enforced centrally rather than at each call site: nobody is ever notified
 about their own action, recipients are deduplicated so a fan-out cannot double-send, and a
@@ -473,6 +515,88 @@ that caused it.
 The bell polls a count-only endpoint every 60 seconds and fetches the list only when
 opened. A socket would be the right answer for a chat product; here the events arrive
 minutes apart and a socket's reconnect, sleep and multi-tab handling costs more than it saves.
+
+---
+
+## Attempt limits, certificates, ratings, audit trail, export
+
+**Quiz attempt limits.** Four by default, set per quiz. `0` means unlimited; `null` means
+never configured and takes the default. That distinction matters because schema defaults
+apply only on *create* — every quiz that existed before the field did came back `null`, and
+a boot-time backfill closes that gap rather than leaving old quizzes silently uncapped.
+
+**Certificates** are issued when a course is genuinely finished: every lesson complete *and*
+the quiz passed. Serials are `CC-XXXX-XXXX-XXXX` from a 32-character alphabet with the
+ambiguous glyphs removed, so a serial read aloud or copied off a screenshot survives the
+trip. `/certificates/[serial]` verifies one **without a login** — a certificate only its
+owner can check is not a credential. Issuing is idempotent: finishing a course twice does
+not mint a second one.
+
+**Ratings and reviews** are limited to students enrolled in the course. That excludes staff
+by construction, which is the point: an instructor rating their own course is not a review,
+and a catalog whose stars can be set by anyone with an account is worth less than no stars.
+One review per person per course — submitting again edits the existing one. Averages appear
+on catalog cards.
+
+**Audit trail.** Every privileged action — role changes, access restrictions, un-enrolments —
+is written with the actor and target *labels snapshotted at the time*, not joined at read
+time, so the record still reads correctly after an account is renamed or deleted. There is
+no update or delete route: an audit log you can edit is not an audit log. Admin-readable
+only, and a failed write never rolls back the action it was recording.
+
+**CSV export** for the user list and for a course's cohort. Any field starting with `=`,
+`+`, `-`, `@`, tab or carriage return is escaped, because a spreadsheet treats those as the
+start of a formula — a display name of `=cmd|...` is a live attack against whoever opens the
+file, not a cosmetic problem.
+
+---
+
+## Course discussion
+
+Every course carries its own thread, readable signed out — a discussion you cannot read
+until you enroll cannot help you decide whether to enroll.
+
+**Who may reply is the feature.** Anyone signed in may ask a question. A reply may only come
+from the teaching staff for that course, or from the person who asked:
+
+| Who | May reply to |
+|---|---|
+| Admin | anyone, on any course |
+| Content Manager | anyone, on any course |
+| Instructor | anyone, **on a course they own** |
+| Student | **their own comment only** |
+
+An instructor's authority in the thread is scoped by `canManageCourse` — the same helper
+that decides who may edit that course's lessons and quizzes. On somebody else's course an
+instructor is an ordinary participant. That keeps the discussion consistent with the
+permission matrix rather than inventing a second, looser one.
+
+The rule is one function in `backend/src/api/course-comment/controllers/course-comment.ts`:
+
+```ts
+const canReply = (user, parent, course) => {
+  if (canManageCourse(user, course)) return true;
+  return parent.author?.id === user.id;
+};
+```
+
+It is checked on the server, after loading both the parent comment and the course, because
+deciding it needs the parent's author and the course's owner — neither of which can be
+trusted from the request. The frontend hides a Reply button it knows would 403, but that is
+a courtesy: editing the client grants nobody anything.
+
+This is a **separate content type** from the blog thread rather than a `targetType` flag on
+the existing one. The reply rules differ, and folding both into one controller would thread
+a discriminator through every branch of the permission check — the one place where two
+features' rules must not be confusable.
+
+Like the blog thread it references its parent by a plain `courseDocumentId` string. Courses
+use Draft & Publish, so a relation would bind each comment to the draft *or* the published
+row and strand it on the next publish. The trade is no database cascade, so deleting a
+course clears its comments explicitly.
+
+Staff replies carry the author's role, badged in the UI, so a student can tell an
+instructor's answer from another student's guess at a glance.
 
 ---
 
@@ -527,41 +651,107 @@ The backend refuses to demote the last remaining admin.
 
 ## Deploying
 
+Both hosts deploy from this one repo, each pointed at a different subdirectory. The build
+and start commands live in `backend/railway.json` rather than in the Railway UI, so a
+recreated service comes back configured.
+
+The two services need each other's URL and neither exists yet, so the order matters:
+**Railway first**, then Vercel, then set `FRONTEND_URL` back on Railway.
+
 ### Backend on Railway
 
-1. New project, **Deploy from GitHub repo**, root directory `backend`.
-2. Add a **Postgres** database to the project. Railway injects `DATABASE_URL`, and
-   `config/database.ts` switches to Postgres the moment that variable exists, so nothing
-   else needs changing. The `pg` driver is a dependency.
-3. Set the variables:
+1. **New project → Deploy from GitHub repo**, then **Settings → Source → Root Directory**
+   = `backend`. The first build fails before you set this — the repo root holds two apps and
+   no application of its own.
+2. **New → Database → PostgreSQL.** Reference it rather than pasting the connection string:
+
+   | Variable | Value |
+   |---|---|
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+   | `DATABASE_SSL` | `false` |
+
+   `config/database.ts` treats the presence of `DATABASE_URL` as "we are on Postgres" and
+   reads no other database variable, so leave `DATABASE_CLIENT` and friends unset.
+
+   `DATABASE_SSL=false` is not optional. The config defaults SSL *on* when `DATABASE_URL`
+   exists — right for a public endpoint, wrong for Railway's private network, which does not
+   offer TLS. Left unset you get `The server does not support SSL connections` and a crash
+   loop that reads like a code fault.
+3. Set the rest:
 
    | Variable | Value |
    |---|---|
    | `APP_KEYS`, `API_TOKEN_SALT`, `ADMIN_JWT_SECRET`, `TRANSFER_TOKEN_SALT`, `JWT_SECRET`, `ENCRYPTION_KEY` | Fresh secrets, one per environment |
    | `NODE_ENV` | `production` |
-   | `FRONTEND_URL` | Your Vercel URL, for CORS |
-   | `BOOTSTRAP_ADMIN_EMAIL` | The address you will sign up with |
-   | `SEED_DEMO_DATA` | Leave unset in production |
+   | `NODE_VERSION` | `22` |
+   | `SEED_DEMO_DATA`, `SEED_PASSWORD`, `SEED_CATALOG` | Populate the demo accounts and catalog |
+   | `FRONTEND_URL` | The Vercel URL — added after step 6 |
 
-   Generate a secret with:
+   Do **not** set `PORT` or `HOST`. Railway injects `PORT` and `config/server.ts` reads it;
+   overriding either makes the healthcheck time out on an app that is running fine.
+
    ```bash
    node -e "console.log(require('crypto').randomBytes(16).toString('base64'))"
    ```
-4. Deploy, then open `https://<your-app>.railway.app/admin` once to create the Strapi
-   superadmin. Roles, permissions and the default sign-up role are applied automatically
-   on boot.
+4. Mount a **volume** at `/app/public/uploads`. Container filesystems are ephemeral, so
+   uploaded avatars and covers vanish on the next deploy without one. With Root Directory
+   set to `backend`, the container's `/app` *is* `backend/`.
+5. **Settings → Networking → Generate Domain.**
+6. Open `https://<your-app>.up.railway.app/admin` once and register. That URL is public and
+   unclaimed until someone does — this is the Strapi CMS account, separate from the app's
+   own `admin` role.
 
 ### Frontend on Vercel
 
-1. Import the same repo, root directory `frontend`. Next.js is detected automatically.
-2. Set `STRAPI_URL` to the Railway URL. It is server-side only and never reaches the browser.
-3. Deploy, then set `FRONTEND_URL` on Railway to the Vercel URL and redeploy the backend so
-   CORS allows it.
+1. Import the same repo, **Root Directory** `frontend`. Next.js is detected once it can see
+   `frontend/package.json`.
+2. Set `STRAPI_URL` to the Railway URL — `https`, no trailing slash — **on the import
+   screen, before the first build.**
+
+   `next.config.ts` reads it at *build* time to derive the `remotePatterns` entry for
+   uploaded images and to decide whether the image optimiser's SSRF guard stays on. Build
+   without it and the fallback is `127.0.0.1`: the build succeeds, every uploaded image
+   returns `400 "url" parameter is not allowed`, and the SSRF guard is off in production
+   with nothing in the log to say so. Adding the variable later requires a **rebuild**, not
+   a restart.
+3. Leave `SECURE_COOKIES` unset. The session cookie marks itself `Secure` in production
+   automatically; the variable exists only to switch that off for a local HTTP build.
+4. Deploy, then **Settings → General → Node.js Version → 22.x**.
+
+### Closing the loop
+
+Set `FRONTEND_URL` on Railway to the Vercel origin and redeploy. The browser never calls
+Strapi directly — it calls this app's own `/api/auth/*` and the Next server calls Strapi —
+so server-to-server traffic carries no `Origin` and CORS rarely bites. Set it anyway: it is
+what stops another site's JavaScript reaching the API from a visitor's browser.
+
+### Two things that will bite on a redeploy
+
+**`npm ci` cannot run under Railway's build cache.** The builder mounts a cache at
+`node_modules/.cache`, and `npm ci` begins by deleting `node_modules` wholesale — you cannot
+unlink a live mount, so the build dies with `EBUSY` in about 45 seconds. The build command
+empties `node_modules` around that mount and then installs.
+
+**A schema change lengthens boot past the default healthcheck window.** Strapi answers
+nothing until `bootstrap` finishes, and adding a content type puts a Postgres migration in
+front of the seeding. Railway then kills a process that is working correctly, which surfaces
+as `SIGTERM` on `strapi start` with no error above it. `railway.json` sets
+`healthcheckTimeout: 300` for exactly this.
+
+A superseded deployment logs the *same* `SIGTERM` and `Stopping Container` lines when a new
+one replaces it. Tell them apart by what came before: a replaced container was serving 200s
+right up to the signal; a failed one never served anything.
 
 ### First run in production
 
-Sign up at `/signup` with the `BOOTSTRAP_ADMIN_EMAIL` address, restart the Railway service
-once, and that account becomes the admin. Everyone else is promoted from `/admin`.
+`SEED_DEMO_DATA=true` creates the four role accounts with `SEED_PASSWORD`, which is what
+makes the demo logins above work. Understand the trade: it puts four accounts with a
+documented password on the public internet. Correct for a graded submission where a reviewer
+needs to sign in as each role; for anything real, seed once, then set it to `false` and
+change the passwords.
+
+To make your own account an admin, sign up on the live site, set `BOOTSTRAP_ADMIN_EMAIL` to
+that address and redeploy. It only ever promotes an existing account, never creates one.
 
 ---
 
@@ -573,8 +763,10 @@ once, and that account becomes the admin. Everyone else is promoted from `/admin
 | `JWT_EXPIRES_IN` | How long a login lasts (default `7d`) |
 | `DATABASE_CLIENT`, `DATABASE_FILENAME` | Local SQLite |
 | `DATABASE_URL` | Set by Railway; its presence switches the app to Postgres |
+| `DATABASE_SSL` | `false` on Railway's private network, which does not offer TLS. Defaults to `true` when `DATABASE_URL` is set |
+| `NODE_ENV`, `NODE_VERSION` | `production` and `22`. `package.json` requires Node 20–26 |
 | `FRONTEND_URL` | Comma-separated origins allowed through CORS |
-| `SEED_DEMO_DATA`, `SEED_PASSWORD` | Fixture seed on boot — five demo accounts and a small dataset. Leave off in production |
+| `SEED_DEMO_DATA`, `SEED_PASSWORD` | Fixture seed on boot — the demo accounts and a small dataset. Deliberately left **on** in this deployment so a reviewer can sign in as each role; off for anything real |
 | `SEED_CATALOG` | Adds the full catalog (10 courses, 150 lessons, 50 quizzes, 15 posts). Idempotent: skips slugs that already exist |
 | `BOOTSTRAP_ADMIN_EMAIL` | Promotes this address to admin on boot. Only ever promotes, and never creates an account |
 
@@ -582,29 +774,5 @@ once, and that account becomes the admin. Everyone else is promoted from `/admin
 
 | Variable | Purpose |
 |---|---|
-| `STRAPI_URL` | Origin of the Strapi API. Server-side only; it is never sent to the browser |
-
----
-
-## Video walkthrough outline
-
-The spec asks for seven things. Where each one lives:
-
-| Required | Where to show it |
-|---|---|
-| Live demo across roles | Student: `/courses` to enroll, `/learn/...` for a lesson, mark complete, sit the quiz. Instructor: `/studio` to create a course, lesson and quiz. Admin: `/admin` to change a role |
-| Data flow, one feature | Mark complete: `complete-button.tsx` to `/api/progress` to Strapi `/lesson-progresses/complete` and back with a recomputed percentage |
-| Role enforcement on the backend | `backend/src/bootstrap/permission-map.ts` (the matrix in code), `src/policies/`, then a controller ownership check. Run `npm run smoke` on camera |
-| Progress tracking logic | `backend/src/utils/progress.ts`, `computeCourseProgress`. Explain why the percentage is derived rather than stored |
-| Quiz grading logic | `backend/src/utils/grading.ts`, `gradeAttempt`. A pure function; the client sends choices, never a score |
-| Admin panel and blog | `/admin` role change, then `/studio/blog` draft to published, showing the draft is absent from `/blog` |
-| Deployment setup | `config/database.ts` switching on `DATABASE_URL`, the env vars on both hosts, and why `STRAPI_URL` is server-side only |
-
-Worth showing if there is time, because these are the parts that go beyond the brief:
-
-| Extra | Where to show it |
-|---|---|
-| Analytics | Sign in as the instructor, `/dashboard`, then a course's insights page — completion per lesson, then a student's marked answers |
-| Access control in action | `/admin`, restrict a student from courses, then fail to enroll as that student. The button is not hidden; the API returns 403 |
-| Profiles | The header avatar to `/u/...`, then `/settings/profile` — and note there is no user id in the form |
-| Search everywhere | `/courses` with a term and two filters, showing the URL carries the state |
+| `STRAPI_URL` | Origin of the Strapi API. Server-side only; never sent to the browser. **Read at build time** — changing it needs a rebuild, not a restart |
+| `SECURE_COOKIES` | Leave unset. Only to disable the `Secure` cookie flag for a production build served over local HTTP |
