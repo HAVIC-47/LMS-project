@@ -10,6 +10,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { NotificationBell } from './notification-bell';
 import { ButtonLink, Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
+import { CONTAINER_MAX } from '@/lib/layout';
 import { ROLE_LABELS, type SessionUser } from '@/lib/types';
 
 /**
@@ -118,7 +119,7 @@ export function SiteHeader({
           // Detached from the top edge and floating on a blurred pane. The bar reads as
           // an object over the page rather than a strip welded to the viewport, which is
           // the difference between "modern header" and "toolbar".
-          'mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-2 rounded-card sm:gap-4',
+          `mx-auto flex h-16 w-full ${CONTAINER_MAX} items-center justify-between gap-2 rounded-card sm:gap-4`,
           // Tighter padding on a phone. "CourseCatalyst" is a long wordmark and the bar
           // also carries the bell, the theme toggle, the avatar and the menu button; at
           // 375px the old 20px inset was enough to push the row into a horizontal scroll.

@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn';
+import { CONTAINER_MAX, CONTAINER_PADDING } from '@/lib/layout';
 import { LEVEL_LABELS, type CourseLevel } from '@/lib/types';
 
 /** One container width for the whole product. Mixed max-widths are what make pages drift. */
@@ -9,7 +10,24 @@ export function Container({
   className?: string;
   children: React.ReactNode;
 }) {
-  return <div className={cn('mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8', className)}>{children}</div>;
+  // A handful of pages -- the forms, the notification list -- deliberately sit narrower
+  // than the page. `cn` concatenates rather than de-duplicates, so passing `max-w-3xl`
+  // used to emit both widths and leave the winner to stylesheet order rather than to
+  // intent. Where a caller states a width, that width is the only one written.
+  const callerSetsWidth = /(?:^|\s)max-w-/.test(className ?? '');
+
+  return (
+    <div
+      className={cn(
+        'mx-auto w-full',
+        CONTAINER_PADDING,
+        !callerSetsWidth && CONTAINER_MAX,
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
 }
 
 /**
