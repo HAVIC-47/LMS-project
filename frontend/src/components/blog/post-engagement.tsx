@@ -119,7 +119,10 @@ export function PostEngagement({
     : 0;
 
   return (
-    <section className="mx-auto flex w-full max-w-[68ch] flex-col gap-10 border-t border-line pt-10">
+    // Full container width, matching the post body above it. The `border-t` on this
+    // section is the rule that separates article from discussion: held at a 68ch measure
+    // under a full-width body it reads as a stray line rather than a divider.
+    <section className="flex w-full flex-col gap-10 border-t border-line pt-10">
       <div className="flex flex-wrap items-center gap-4">
         <button
           type="button"

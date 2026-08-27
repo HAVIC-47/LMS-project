@@ -277,11 +277,16 @@
     color: var(--text-subtle);
   }
 
-  /** Body copy set for reading rather than scanning. */
+  /**
+   * Body copy set for reading rather than scanning.
+   *
+   * Size and leading only -- the measure is the caller's decision. It used to pin
+   * `max-width: 68ch` here, which no caller could undo: `max-w-none` is also a utility, and
+   * this rule is emitted after Tailwind's, so it won on order rather than on intent.
+   */
   .prose-editorial {
     font-size: 1.125rem;
     line-height: 1.75;
-    max-width: 68ch;
   }
 
   /** The one decorative flourish: a short rule that marks a section opening. */
@@ -328,7 +333,7 @@
    every screen it targeted.
    --------------------------------------------------------------------------- */
 :root {
-  --page-max: 72rem; /* 1152px -- 1280x720 and below */
+  --page-max: 1152px; /* 1280x720 and below */
 }
 
 /* 1600 rather than Tailwind's 1536 `2xl`: the header bar's outer padding sits outside
@@ -338,13 +343,42 @@
    ran wider than the header above it. */
 @media (min-width: 1600px) {
   :root {
-    --page-max: 93.75rem; /* 1500px -- 1920x1080 */
+    --page-max: 1500px; /* 1920x1080 */
   }
 }
 
 @media (min-width: 2200px) {
   :root {
-    --page-max: 118.75rem; /* 1900px -- 2560x1440 */
+    --page-max: 1900px; /* 2560x1440 */
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Type and spacing scale
+   ---------------------------------------------------------------------------
+   Every size in this codebase is expressed in rem -- body copy, headings, the
+   Tailwind spacing scale, gaps, radii. Raising the root font size therefore
+   scales the whole interface as one piece, rather than growing text inside
+   padding that stayed put.
+
+   16px is the floor and stays the floor below 1600px: anything smaller triggers
+   zoom-on-focus in iOS Safari, and 16px is correct on a laptop. Above that the
+   viewport is a desktop monitor, usually further away, and a 16px interface on
+   a 1920 display reads as small even though the pixel size is identical.
+
+   The width steps above are declared in px on purpose. In rem they would ride
+   this ramp -- 1500px would become 1640px at 17.5px root -- and the container
+   would silently stop matching the sizes it was specified at.
+   --------------------------------------------------------------------------- */
+@media (min-width: 1600px) {
+  html {
+    font-size: 17.5px; /* +9% */
+  }
+}
+
+@media (min-width: 2200px) {
+  html {
+    font-size: 19px; /* +19% */
   }
 }
 

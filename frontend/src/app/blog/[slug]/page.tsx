@@ -68,54 +68,76 @@ export default async function BlogPostPage({ params }: PageProps) {
           All posts
         </Link>
 
-        <header className="mx-auto flex w-full max-w-[68ch] flex-col gap-5">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs tabular-nums text-text-subtle">
-            <time dateTime={post.publishedAt ?? post.createdAt}>
-              {formatDate(post.publishedAt ?? post.createdAt)}
-            </time>
-            <span aria-hidden>/</span>
-            <span>{readingTime(post.body)} min read</span>
-          </div>
+        {/* Cover left, title right, body beneath.
+            The two sit in one grid rather than stacked blocks so the tall title column and
+            the image share a baseline and a height. DOM order is header-then-image, and the
+            image is pulled left only from `lg` up: on a phone the columns collapse, and the
+            first thing you should meet is the headline, not a picture of nothing in
+            particular. `items-center` rather than `items-stretch` because a short title
+            beside a tall image should sit centred against it, not pinned to the top with a
+            gap under it. */}
+        <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.5fr)] lg:gap-14">
+          <header className="flex flex-col gap-6 lg:order-2">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs tabular-nums text-text-subtle">
+              <time dateTime={post.publishedAt ?? post.createdAt}>
+                {formatDate(post.publishedAt ?? post.createdAt)}
+              </time>
+              <span aria-hidden>/</span>
+              <span>{readingTime(post.body)} min read</span>
+            </div>
 
-          <h1 className="display-tight font-serif text-4xl font-normal sm:text-5xl lg:text-6xl">
-            {post.title}
-          </h1>
+            <h1 className="display-tight font-serif text-[clamp(2.5rem,5vw,4.5rem)] font-normal">
+              {post.title}
+            </h1>
 
-          {post.excerpt ? (
-            <p className="text-lg leading-relaxed text-text-muted">{post.excerpt}</p>
+            {post.excerpt ? (
+              <p className="max-w-[46ch] text-xl leading-relaxed text-text-muted">{post.excerpt}</p>
+            ) : null}
+
+            {/* The byline is the natural way into a profile: you finish something and want
+                to know who wrote it. Linking here rather than from the card avoids nesting
+                an anchor inside the card's own link, which is invalid markup. */}
+            {post.author ? (
+              <p className="text-sm text-text-subtle">
+                By{' '}
+                <Link
+                  href={`/u/${post.author.username}`}
+                  className="text-text underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-text"
+                >
+                  {post.author.username}
+                </Link>
+              </p>
+            ) : null}
+          </header>
+
+          {isRenderableImage(post.coverImageUrl) ? (
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-card bg-shell lg:order-1 lg:aspect-square">
+              <Image
+                src={post.coverImageUrl}
+                alt=""
+                fill
+                // The image is half the grid on a wide screen and the full column on a
+                // phone, so the browser is told exactly that rather than left to assume
+                // full-width and download twice the pixels it will paint.
+                sizes="(max-width: 1024px) 100vw, 34vw"
+                priority
+                className="object-cover"
+              />
+            </div>
           ) : null}
+        </div>
 
-          {/* The byline is the natural way into a profile: you finish something and want
-              to know who wrote it. Linking here rather than from the card avoids nesting
-              an anchor inside the card's own link, which is invalid markup. */}
-          {post.author ? (
-            <p className="text-sm text-text-subtle">
-              By{' '}
-              <Link
-                href={`/u/${post.author.username}`}
-                className="text-text underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-text"
-              >
-                {post.author.username}
-              </Link>
-            </p>
-          ) : null}
-        </header>
-
-        {isRenderableImage(post.coverImageUrl) ? (
-          <div className="relative aspect-[21/9] w-full overflow-hidden rounded-card bg-shell">
-            <Image
-              src={post.coverImageUrl}
-              alt=""
-              fill
-              sizes="(max-width: 1280px) 100vw, 1200px"
-              priority
-              className="object-cover"
-            />
-          </div>
-        ) : null}
-
-        {/* 68ch keeps lines inside the comfortable 65 to 75 character band. */}
-        <div className="prose-editorial mx-auto flex w-full flex-col gap-6">
+        {/* Full container width and justified, by request.
+            Both work against readability at this measure, so both are mitigated rather than
+            left raw. Leading is opened to 1.9 -- at roughly 180 characters a line, the return
+            sweep to the left edge is where the eye loses its place, and extra space between
+            lines gives it a clearer target.
+            `hyphens-auto` is what makes justification survive: justified text sets by
+            stretching word spaces, and with no hyphenation those gaps line up vertically into
+            the white "rivers" that make justified web text look broken. Letting the browser
+            break long words keeps the spacing even. It needs `lang` on <html>, which layout.tsx
+            sets. */}
+        <div className="prose-editorial flex w-full flex-col gap-6 text-justify leading-[1.9] hyphens-auto">
           {paragraphs.length === 0 ? (
             <p className="text-text-muted">This post has no body yet.</p>
           ) : (
