@@ -61,13 +61,6 @@ Sign in at **http://localhost:3000/login** locally, or at
 **https://course-catalyst-lac.vercel.app/login** on the live site — the same seed runs in
 both, so these accounts work in either place.
 
-| Role | Email | Password | Lands on |
-|---|---|---|---|
-| **Admin** | `admin@lms.test` | `Passw0rd!23` | `/admin` |
-| **Content Manager** | `cm@lms.test` | `Passw0rd!23` | `/dashboard` |
-| **Instructor** | `instructor@lms.test` | `Passw0rd!23` | `/dashboard` |
-| **Student** | `student@lms.test` | `Passw0rd!23` | `/dashboard` |
-| **Student (empty)** | `student2@lms.test` | `Passw0rd!23` | `/dashboard` |
 
 #### What each account is for
 
